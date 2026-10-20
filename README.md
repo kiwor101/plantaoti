@@ -1,6 +1,6 @@
 # Plantões TI
 
-Registro de chamados e plantões de fim de semana. Login individual (Pedro, Eduardo, Rafael), banco no Supabase, hospedagem via GitHub.
+Registro de chamados e plantões de fim de semana. Login individual , banco no Supabase, hospedagem via GitHub.
 
 ## 1. Supabase
 1. Crie um projeto em supabase.com.
