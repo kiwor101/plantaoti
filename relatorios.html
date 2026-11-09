@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meus relatórios · Plantão TI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{color-scheme:light;--bg:#f6f8fb;--card:#fff;--ink:#111a33;--mute:#67758d;--line:#dce3ec;--brand:#07827d;--brand-ink:#fff;--brand-soft:#e8f6f4;--ok:#176d4d;--okbg:#e2f4ea;--bad:#b3261e;--open:#8a4207;--openbg:#fef3dc}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:13px;padding:12px 26px;background:var(--card);border-bottom:1px solid #edf0f4;min-height:64px}
+header h1{font-size:30px;letter-spacing:-.04em;margin:0;flex:1;line-height:1}header h1 span{color:var(--brand)}header #quem{overflow-wrap:anywhere;color:var(--ink);font-size:14px}header #avatar{display:grid;place-items:center;width:35px;height:35px;background:#e3e7ee;border-radius:50%;font-size:12px;font-weight:600;color:var(--ink)}
+main{max-width:1600px;margin:0 auto;padding:22px 20px 64px 4px}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{width:100%;min-width:0;padding:10px 14px;border:1px solid #cbd5e3;border-radius:7px;background:var(--card);caret-color:var(--brand)}
+textarea{min-height:150px;resize:vertical}
+label{display:block;font-weight:500;font-size:14px;margin:16px 0 6px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:10px 16px;border-radius:7px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+button:hover:not(:disabled){border-color:var(--brand)}button:disabled{opacity:.55;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+::selection{background:var(--brand);color:var(--brand-ink)}
+.meta{color:var(--mute);font-size:13px}.desc{white-space:pre-wrap;overflow-wrap:anywhere}
+.login{max-width:360px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:24px}
+.login h1{margin:0 0 4px;font-size:22px}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.err{color:var(--bad);font-size:14px}.hide{display:none!important}
+@media(max-width:600px){main{padding:14px 12px 40px}.row{grid-template-columns:1fr;gap:0}header{padding:12px 16px;gap:10px}header h1{font-size:23px}header #quem{font-size:12px;max-width:100px}.login{margin:8vh 16px}}
+</style>
+<link rel="stylesheet" href="login.css">
+</head>
+<body>
+<form id="telaLogin" class="login-screen hide">
+  <section class="login-story" aria-label="Apresentação do Plantão TI">
+    <div class="login-brand"><span class="login-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8Z"/><path d="M8 3v5h8M8 13l2 2-2 2m5 0h3"/></svg></span><span>Plantão <span>TI</span></span></div>
+    <div class="code-window" aria-hidden="true"><div class="code-window-header"><i></i><i></i><i></i><span>exemplo ilustrativo · plantao.js</span></div><pre><code><span class="syntax-muted">// Cada atendimento, no seu tempo.</span>
+<span class="syntax-blue">const</span> atendimento = {
+  inicio: <span class="syntax-gold">"19:00"</span>,
+  termino: <span class="syntax-gold">"20:15"</span>,
+  relato: <span class="syntax-gold">"Suporte concluído"</span>
+};
+
+<span class="syntax-cyan">registrar</span>(atendimento);</code></pre></div>
+    <div class="login-story-copy"><h2>Seu plantão, <em>registrado com clareza.</em></h2><p>Registre os atendimentos e acompanhe as horas acumuladas em um só lugar.</p></div>
+  </section>
+  <div class="login-panel"><div class="login-panel-inner">
+    <div class="login-brand login-mobile-brand"><span class="login-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8Z"/><path d="M8 3v5h8M8 13l2 2-2 2m5 0h3"/></svg></span><span>Plantão <span>TI</span></span></div>
+    <h1>Acesse seu plantão</h1><p class="login-panel-intro">Entre para registrar e conferir seus relatórios.</p>
+    <div class="login-field"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" inputmode="email" required></div>
+    <div class="login-field"><label for="senha">Senha</label><div class="password-control"><input id="senha" type="password" autocomplete="current-password" required><button id="mostrarSenha" type="button" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div></div>
+    <label class="login-remember" for="lembrarAcesso"><input id="lembrarAcesso" type="checkbox">Manter conectado neste dispositivo</label>
+    <p class="login-memory-help">Para memorizar a senha, permita que seu navegador a salve quando ele oferecer.</p>
+    <p class="err" id="erroLogin" role="alert"></p>
+    <button type="submit" class="primary" id="btnEntrar">Entrar</button>
+  </div></div>
+</form>
+<div id="telaApp" class="hide">
+  <header><h1>Plantão <span>TI</span></h1><span id="avatar" aria-hidden="true"></span><span class="meta" id="quem"></span><button id="btnSair">Sair</button></header>
+  <main></main>
+</div>
+<script src="app-auth.js"></script>
+<script src="relatorios.js"></script>
+<script>iniciar();</script>
+</body>
+</html>
