@@ -1,0 +1,25 @@
+# Evita que o Supabase gratuito pause o projeto por falta de uso (pausa após ~7 dias parado).
+# Roda a cada 3 dias e faz uma consulta simples ao banco. Também dá para rodar na mão:
+# GitHub > Actions > "Manter Supabase ativo" > Run workflow.
+name: Manter Supabase ativo
+
+on:
+  schedule:
+    - cron: "0 12 */3 * *"   # 09h (Brasília), a cada 3 dias
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consulta o banco
+        env:
+          # mesmos valores públicos do index.html (chave publishable, protegida pelo RLS)
+          SUPABASE_URL: https://iyrlbfrsrolwhybumler.supabase.co
+          SUPABASE_KEY: sb_publishable_DzO4wyz9PQsy8enPNF00tg_RHlVStkh
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/chamados?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY")
+          echo "Supabase respondeu HTTP $code"
+          test "$code" = "200"

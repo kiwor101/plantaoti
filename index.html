@@ -48,11 +48,9 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <div id="telaLogin" class="login hide">
   <h1>Plantões TI</h1>
-  <div class="meta">Entre com seu e-mail e senha.</div>
-  <label for="email">E-mail</label><input id="email" type="email" autocomplete="username">
-  <label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password">
+  <div class="meta">Entre com sua conta Microsoft da Santa Casa.</div>
   <p class="err" id="erroLogin"></p>
-  <button class="primary" id="btnEntrar" style="width:100%">Entrar</button>
+  <button class="primary" id="btnEntrar" style="width:100%">Entrar com Microsoft</button>
 </div>
 
 <div id="telaApp" class="hide">
@@ -105,8 +103,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <script>
 // ====== CONFIGURE AQUI (Supabase > Project Settings > API) ======
-const SUPABASE_URL = "https://vidwjeyguypqhcuhgmar.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Cb7iuzIgm5RZ8kDdhjN06Q_Y04JJSFb"; // chave publicável — protegida pelas políticas RLS
+const SUPABASE_URL = "https://iyrlbfrsrolwhybumler.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_DzO4wyz9PQsy8enPNF00tg_RHlVStkh"; // chave publicável — protegida pelas políticas RLS
 // ================================================================
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -125,8 +123,16 @@ function sabadoAtual(){
 }
 
 async function iniciar(){
+  // erro devolvido pelo login Microsoft (ex.: e-mail fora da lista de liberados)
+  const ret = new URLSearchParams(location.search + "&" + location.hash.slice(1));
+  const erroRetorno = ret.get("error_description");
+  if (erroRetorno) history.replaceState(null, "", location.pathname);
   const { data:{ session } } = await sb.auth.getSession();
-  session ? entrou(session.user) : mostrarLogin();
+  if (session) return entrou(session.user);
+  mostrarLogin();
+  if (erroRetorno) $("erroLogin").textContent = /saving new user|não liberado/i.test(erroRetorno)
+    ? "Seu e-mail não está liberado para o Plantões TI. Fale com o gerente da TI."
+    : "Não foi possível entrar: " + erroRetorno;
 }
 function mostrarLogin(){ $("telaLogin").classList.remove("hide"); $("telaApp").classList.add("hide"); }
 
@@ -141,11 +147,12 @@ async function entrou(u){
 
 $("btnEntrar").onclick = async () => {
   $("erroLogin").textContent = "";
-  const { data, error } = await sb.auth.signInWithPassword({ email:$("email").value.trim(), password:$("senha").value });
-  if (error) return $("erroLogin").textContent = "E-mail ou senha incorretos.";
-  entrou(data.user);
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "azure",
+    options: { scopes: "email", redirectTo: location.origin + location.pathname }
+  });
+  if (error) $("erroLogin").textContent = "Não foi possível abrir o login Microsoft: " + error.message;
 };
-$("senha").addEventListener("keydown", e => e.key === "Enter" && $("btnEntrar").click());
 $("btnSair").onclick = async () => { await sb.auth.signOut(); location.reload(); };
 
 async function carregar(){
