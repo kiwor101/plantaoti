@@ -149,7 +149,11 @@ $("btnEntrar").onclick = async () => {
   $("erroLogin").textContent = "";
   const { error } = await sb.auth.signInWithOAuth({
     provider: "azure",
-    options: { scopes: "email", redirectTo: location.origin + location.pathname }
+    options: {
+      scopes: "openid email profile",
+      redirectTo: location.origin + location.pathname,
+      queryParams: { prompt: "select_account" }  // sempre mostra a escolha de conta Microsoft
+    }
   });
   if (error) $("erroLogin").textContent = "Não foi possível abrir o login Microsoft: " + error.message;
 };
