@@ -1,0 +1,5 @@
+[functions.enviar-relatorio-rh]
+verify_jwt = true
+
+[functions.revisar-relatorio]
+verify_jwt = true
