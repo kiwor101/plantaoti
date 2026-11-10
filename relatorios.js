@@ -66,6 +66,11 @@
     #hListaDica{display:none}@media(max-width:750px){#hListaDica{display:block;margin:7px 0;font-size:12px}}
     #hLista .registro-exclusao td{background:#fff7f6;white-space:normal;padding:12px 15px;border:1px solid #e7b3af}#hLista .registro-exclusao p{margin:0 0 9px;color:#74231f;font-size:13px}#hLista .registro-exclusao .horas-actions{margin:0}#hLista .registro-exclusao button[data-h-confirmar]{background:#a62822;border-color:#a62822;color:#fff;font-weight:600}#hLista .registro-exclusao button[data-h-confirmar]:hover:not(:disabled){background:#87201b}#hLista .registro-exclusao .err{display:block;margin-top:8px}
     #horasForm #hSolucao{min-height:clamp(300px,36vh,420px)}
+    .filtro-colab{display:flex;align-items:center;gap:10px;margin-left:auto}.filtro-colab label{margin:0;font-size:13px;font-weight:600;white-space:nowrap}.filtro-colab select{width:auto;min-width:200px;padding:7px 12px;font-size:14px}
+    .horas-equipe{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:0 0 16px}
+    .equipe-card{display:grid;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--brand-soft)}.equipe-card strong{font-size:14px;overflow-wrap:anywhere}.equipe-card span{font-size:18px;font-weight:600;color:var(--brand);font-variant-numeric:tabular-nums}.equipe-card small{color:var(--mute);font-size:12px}
+    #hLista td.registro-colab{font-weight:500}
+    @media(max-width:600px){.filtro-colab{margin-left:0;width:100%}.filtro-colab select{flex:1;min-width:0}}
     @media(max-width:600px){#horas h2{font-size:25px;margin-bottom:16px}#horasForm,.horas-ajuda,.horas-registros{padding:17px}.horas-nav a,.horas-nav #btnSair{font-size:13px;padding:8px 10px}.etapas{gap:5px;font-size:11px}.etapas button{gap:4px}.etapas button span{width:25px;height:25px;font-size:12px}.etapas i{width:5%}.editor-ferramentas button{min-width:25px;padding:4px}.editor-ferramentas button:nth-of-type(n+4),.editor-ferramentas .separador{display:none}#hMelhorarIA{font-size:11px;padding:5px}.horas-lista-top{align-items:start}#hLista th,#hLista td{padding:7px 9px}#hLista table{min-width:720px}#horasForm #hSolucao{min-height:230px}}
   `;
   document.head.append(style);
@@ -106,12 +111,13 @@
         </aside>
       </div>
       <section class="horas-registros" aria-labelledby="hRegistrosTitulo">
-        <div class="horas-lista-top"><h3 id="hRegistrosTitulo">Meus últimos relatórios</h3><button id="hVerTodos" type="button">Ver todos os relatórios →</button><button id="horasAtualizar" type="button" class="sr-only">Atualizar lista</button></div>
+        <div class="horas-lista-top"><h3 id="hRegistrosTitulo">Meus últimos relatórios</h3><div id="hColabCaixa" class="filtro-colab hide"><label for="hColab">Colaborador</label><select id="hColab"><option value="todos">Toda a equipe</option></select></div><button id="hVerTodos" type="button">Ver todos os relatórios →</button><button id="horasAtualizar" type="button" class="sr-only">Atualizar lista</button></div>
         <details id="hFiltros"><summary>Filtrar por período e envio</summary><div class="horas-filtros">
           <div><label for="hDe">Data inicial</label><input id="hDe" type="date"></div><div><label for="hAte">Data final</label><input id="hAte" type="date"></div>
           <div><label for="hFiltro">Envio ao RH</label><select id="hFiltro"><option value="todos">Todos</option><option value="pendentes">Ainda não incluídos</option><option value="enviados">Aceitos para envio</option></select></div>
         </div><p class="meta">Filtro pela data de início, no horário de Brasília.</p></details>
         <div id="hResumo" class="horas-resumo" tabindex="-1" aria-live="polite">Carregando seus registros…</div>
+        <div id="hEquipe" class="horas-equipe hide" aria-label="Horas por colaborador"></div>
         <p id="hListaDica" class="meta">Deslize a tabela para os lados para ver as ações Editar e Excluir.</p>
         <div id="hLista" role="region" aria-label="Tabela dos relatórios" aria-describedby="hListaDica" tabindex="0"></div>
         <details id="hExportacao"><summary>Exportar e conferir relatório para o RH</summary>
@@ -136,6 +142,12 @@
   if(paginaRelatorios){$('hRegistrosTitulo').textContent='Meus relatórios';document.title='Meus relatórios · Plantão TI';}
   else document.title='Novo relatório · Plantão TI';
   let registros=[],relatorios=[],editing=null,prontos=[],versoes={},ready=false,usuarioAtual=null,geracao=0,busy=false,aiGeracao=0,aiOriginal='',aiBusy=false,mostrarTodos=false,excluindoId=null,excluirErro='';
+  // Gerente: vê, edita e exclui registros de toda a equipe. A tela só se adapta;
+  // quem garante o acesso são as regras do banco (private.eh_gerente()).
+  let perfisNomes={},filtroColab='todos',editandoOutro=null;
+  const ehGerente=()=>perfil?.cargo==='Gerente';
+  const verEquipe=()=>ehGerente()&&paginaRelatorios;
+  const nomeDe=id=>perfisNomes[id]||(id===usuarioAtual?perfil?.nome:'')||'Colaborador';
   const brasil=d=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(d));
   const diaBrasil=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(d));
   const local=d=>{const v=new Date(d);return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}T${String(v.getHours()).padStart(2,'0')}:${String(v.getMinutes()).padStart(2,'0')}`;};
@@ -148,21 +160,47 @@
     const foco=$('hLista').contains(document.activeElement)||$('hHistorico').contains(document.activeElement)||$('horasPreview').contains(document.activeElement);
     const rodada=++geracao;ready=false;$('hPreparar').disabled=true;$('hCsv').disabled=true;$('horasPreview').classList.add('hide');
     try{
-      const buscar=async tabela=>{const todos=[];for(let offset=0;;offset+=500){const {data,error}=await sb.from(tabela).select('*').eq('usuario_id',usuarioAtual).order(tabela==='atendimentos'?'inicio':'criado_em',{ascending:false}).order('id').range(offset,offset+499);if(error)throw error;todos.push(...data);if(data.length<500)return todos;}};
-      const [itens,hist]=await Promise.all([buscar('atendimentos'),buscar('relatorios_horas')]);
-      if(rodada!==geracao)return;registros=itens;relatorios=hist;ready=true;render();if(foco)$('hResumo').focus();
+      const equipe=verEquipe();
+      const buscar=async tabela=>{const todos=[];for(let offset=0;;offset+=500){let q=sb.from(tabela).select('*');if(!equipe)q=q.eq('usuario_id',usuarioAtual);const {data,error}=await q.order(tabela==='atendimentos'?'inicio':'criado_em',{ascending:false}).order('id').range(offset,offset+499);if(error)throw error;todos.push(...data);if(data.length<500)return todos;}};
+      const buscarNomes=async()=>{if(!ehGerente())return [];const {data,error}=await sb.from('perfis').select('id,nome');if(error)throw error;return data;};
+      const [itens,hist,nomes]=await Promise.all([buscar('atendimentos'),buscar('relatorios_horas'),buscarNomes()]);
+      if(rodada!==geracao)return;registros=itens;relatorios=hist;perfisNomes=Object.fromEntries(nomes.map(p=>[p.id,p.nome]));ready=true;render();if(foco)$('hResumo').focus();
       const editarId=!paginaRelatorios?new URLSearchParams(location.search).get('editar'):null;
-      if(editarId){const registro=registros.find(a=>a.id===editarId&&!a.relatorio_id);if(registro){editar(registro);history.replaceState(null,'',location.pathname+'#horasForm');}}
+      if(editarId){
+        let registro=registros.find(a=>a.id===editarId&&!a.relatorio_id);
+        // Gerente editando o registro de outro colaborador: ele não está na lista pessoal.
+        if(!registro&&ehGerente()){const {data,error}=await sb.from('atendimentos').select('*').eq('id',editarId).is('relatorio_id',null).maybeSingle();if(error)throw error;if(rodada!==geracao)return;if(data){registro=data;editandoOutro=data;}}
+        if(registro){editar(registro);history.replaceState(null,'',location.pathname+'#horasForm');}
+        else msg('Este relatório não pode mais ser editado: ele foi excluído ou já entrou no envio ao RH.',true);
+      }
     }catch(e){if(rodada!==geracao)return;msg(erroTexto(e),true);$('hResumo').textContent='Não foi possível atualizar os relatórios. Tente novamente.';}
   }
-  function filtrados(){const de=$('hDe').value,ate=$('hAte').value,filtro=$('hFiltro').value;if(de&&ate&&de>ate)return [];return registros.filter(a=>{const dia=diaBrasil(a.inicio),r=relatorios.find(r=>r.id===a.relatorio_id);return(!de||dia>=de)&&(!ate||dia<=ate)&&(filtro==='todos'||filtro==='pendentes'&&!a.relatorio_id||filtro==='enviados'&&r?.estado==='aceito');});}
+  function filtrados(){const de=$('hDe').value,ate=$('hAte').value,filtro=$('hFiltro').value;if(de&&ate&&de>ate)return [];return registros.filter(a=>{const dia=diaBrasil(a.inicio),r=relatorios.find(r=>r.id===a.relatorio_id);return(!verEquipe()||filtroColab==='todos'||a.usuario_id===filtroColab)&&(!de||dia>=de)&&(!ate||dia<=ate)&&(filtro==='todos'||filtro==='pendentes'&&!a.relatorio_id||filtro==='enviados'&&r?.estado==='aceito');});}
   function estado(a){if(!a.fim)return 'Registro antigo: complete o término';if(!a.relatorio_id)return 'Salvo';return relatorios.find(r=>r.id===a.relatorio_id)?.estado==='aceito'?'Aceito para envio ao RH':'Envio aguardando confirmação';}
   function linhaRegistro(a){
     const i=new Date(a.inicio),f=a.fim?new Date(a.fim):null,horario=d=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}).format(d);
     const acoes=!a.relatorio_id?`<button type="button" data-h-editar="${a.id}" aria-label="Editar ${esc(a.titulo)}">Editar</button><button type="button" data-h-excluir="${a.id}" aria-label="Excluir ${esc(a.titulo)}">Excluir</button>`:'—';
-    const linha=`<tr><td>${new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(i)}</td><td><details class="registro-expandir"><summary>${esc(a.titulo)}</summary><div class="registro-conteudo"><span class="tag ${a.fim?'':'pendente'}">${esc(estado(a))}</span>${a.solicitante||a.setor?`<p class="meta">${esc([a.solicitante,a.setor].filter(Boolean).join(' · '))}</p>`:''}${a.pausa_minutos?`<p class="meta">Pausas: ${a.pausa_minutos} min</p>`:''}${a.descricao?`<p class="desc">${esc(a.descricao)}</p>`:''}<p class="desc">${esc(a.solucao)}</p></div></details></td><td>${horario(i)}</td><td>${f?horario(f):'—'}</td><td>${f?duracao(a.minutos):'Sem término'}</td><td><div class="registro-acao">${acoes}</div></td></tr>`;
+    const colunaColab=verEquipe()?`<td class="registro-colab">${esc(nomeDe(a.usuario_id))}</td>`:'';
+    const linha=`<tr><td>${new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(i)}</td>${colunaColab}<td><details class="registro-expandir"><summary>${esc(a.titulo)}</summary><div class="registro-conteudo"><span class="tag ${a.fim?'':'pendente'}">${esc(estado(a))}</span>${a.solicitante||a.setor?`<p class="meta">${esc([a.solicitante,a.setor].filter(Boolean).join(' · '))}</p>`:''}${a.pausa_minutos?`<p class="meta">Pausas: ${a.pausa_minutos} min</p>`:''}${a.descricao?`<p class="desc">${esc(a.descricao)}</p>`:''}<p class="desc">${esc(a.solucao)}</p></div></details></td><td>${horario(i)}</td><td>${f?horario(f):'—'}</td><td>${f?duracao(a.minutos):'Sem término'}</td><td><div class="registro-acao">${acoes}</div></td></tr>`;
     if(excluindoId!==a.id)return linha;
-    return linha+`<tr class="registro-exclusao"><td colspan="6"><p>Excluir definitivamente o relatório “${esc(a.titulo)}”? As horas registradas nele também sairão dos totais. Esta ação não pode ser desfeita.</p><div class="horas-actions"><button type="button" data-h-confirmar="${a.id}" ${busy?'disabled':''}>Sim, excluir relatório</button><button type="button" data-h-cancelar-exclusao ${busy?'disabled':''}>Cancelar</button></div>${excluirErro?`<span class="err" role="alert">${esc(excluirErro)}</span>`:''}</td></tr>`;
+    const deQuem=a.usuario_id!==usuarioAtual?` de ${esc(nomeDe(a.usuario_id))}`:'';
+    return linha+`<tr class="registro-exclusao"><td colspan="${verEquipe()?7:6}"><p>Excluir definitivamente o relatório “${esc(a.titulo)}”${deQuem}? As horas registradas nele também sairão dos totais. Esta ação não pode ser desfeita.</p><div class="horas-actions"><button type="button" data-h-confirmar="${a.id}" ${busy?'disabled':''}>Sim, excluir relatório</button><button type="button" data-h-cancelar-exclusao ${busy?'disabled':''}>Cancelar</button></div>${excluirErro?`<span class="err" role="alert">${esc(excluirErro)}</span>`:''}</td></tr>`;
+  }
+  function renderEquipe(finalizados){
+    const equipe=verEquipe(),navLista=document.querySelectorAll('.horas-nav a')[1];
+    if(ehGerente()&&navLista?.lastChild?.nodeType===3)navLista.lastChild.textContent='Relatórios da equipe';
+    $('hColabCaixa').classList.toggle('hide',!equipe);
+    if(!equipe){$('hEquipe').classList.add('hide');return;}
+    $('hRegistrosTitulo').textContent='Relatórios da equipe';document.title='Relatórios da equipe · Plantão TI';
+    const ids=[...new Set([...Object.keys(perfisNomes),...registros.map(a=>a.usuario_id)])].sort((x,y)=>nomeDe(x).localeCompare(nomeDe(y),'pt-BR'));
+    if(filtroColab!=='todos'&&!ids.includes(filtroColab))filtroColab='todos';
+    $('hColab').innerHTML='<option value="todos">Toda a equipe</option>'+ids.map(id=>`<option value="${esc(id)}">${esc(nomeDe(id))}</option>`).join('');
+    $('hColab').value=filtroColab;
+    // Total por colaborador só faz sentido olhando a equipe inteira.
+    const porColab=new Map();for(const a of finalizados){const t=porColab.get(a.usuario_id)||{qtd:0,min:0};t.qtd++;t.min+=Number(a.minutos)||0;porColab.set(a.usuario_id,t);}
+    const mostrar=filtroColab==='todos'&&porColab.size>0;
+    $('hEquipe').classList.toggle('hide',!mostrar);
+    $('hEquipe').innerHTML=mostrar?[...porColab].sort((x,y)=>y[1].min-x[1].min).map(([id,t])=>`<button type="button" class="equipe-card" data-h-colab="${esc(id)}" aria-label="Filtrar relatórios de ${esc(nomeDe(id))}"><strong>${esc(nomeDe(id))}</strong><span>${duracao(t.min)}</span><small>${t.qtd} atendimento(s)</small></button>`).join(''):'';
   }
   function render(){
     $('horasPreview').classList.add('hide');const itens=filtrados(),finalizados=itens.filter(a=>a.fim),pendentes=finalizados.filter(a=>!a.relatorio_id),invalido=$('hDe').value&&$('hAte').value&&$('hDe').value>$('hAte').value;
@@ -172,7 +210,8 @@
     $('hResumo').textContent=invalido?'A data inicial deve ser anterior ou igual à final.':`${itens.length} relatório(s) · ${duracao(finalizados.reduce((s,a)=>s+Number(a.minutos),0))} de atendimento`;
     $('hPreparar').disabled=!ready||!pendentes.length||busy;$('hCsv').disabled=!ready||!finalizados.length||busy;
     $('hVerTodos').textContent=mostrarTodos?'Mostrar últimos relatórios ↑':'Ver todos os relatórios →';$('hVerTodos').hidden=paginaRelatorios||itens.length<=3;
-    $('hLista').innerHTML=itens.length?`<table aria-label="Relatórios registrados"><thead><tr><th>Data</th><th>Assunto</th><th>Início</th><th>Término</th><th>Duração</th><th>Ações</th></tr></thead><tbody>${(paginaRelatorios||mostrarTodos?itens:itens.slice(0,3)).map(linhaRegistro).join('')}</tbody></table>`:'<p class="empty">Nenhum relatório registrado. Use “Novo relatório” para criar o primeiro.</p>';
+    renderEquipe(finalizados);
+    $('hLista').innerHTML=itens.length?`<table aria-label="Relatórios registrados"><thead><tr><th>Data</th>${verEquipe()?'<th>Colaborador</th>':''}<th>Assunto</th><th>Início</th><th>Término</th><th>Duração</th><th>Ações</th></tr></thead><tbody>${(paginaRelatorios||mostrarTodos?itens:itens.slice(0,3)).map(linhaRegistro).join('')}</tbody></table>`:'<p class="empty">Nenhum relatório registrado. Use “Novo relatório” para criar o primeiro.</p>';
     $('hHistorico').innerHTML=relatorios.length?relatorios.map(r=>`<article class="horas-registro"><strong>Envio ${esc(r.id.slice(0,8))}</strong><p>${brasil(r.criado_em)} · ${r.itens.length} registro(s) · ${duracao(r.itens.reduce((s,a)=>s+Number(a.minutos),0))}</p><p class="meta">${esc(r.destinatarios.join(', '))} · ${r.estado==='aceito'?'Aceito para envio em '+brasil(r.aceito_em):'Aguardando confirmação'}</p>${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<p>${esc(r.ultimo_erro||'Verifique o resultado do envio.')}</p><button data-h-retomar="${r.id}">Verificar / tentar novamente</button>`:''}</article>`).join(''):'<p class="meta">Nenhum envio realizado.</p>';
   }
   function atualizarEtapas(){
@@ -188,8 +227,8 @@
   }
   function previa(){const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value),pausa=Number($('hPausa').value);$('hPrevia').innerHTML=!$('hInicio').value||!$('hFim').value?'Informe o início e o término para calcular o tempo atendido.':fim>inicio&&Number.isInteger(pausa)&&pausa>=0&&(fim-inicio)/60000>pausa?`<span class="icone-relogio" aria-hidden="true"></span>Duração do atendimento: &nbsp; <strong>${duracao((fim-inicio)/60000-pausa)}</strong>${pausa?` <small>(descontados ${pausa} min de pausas)</small>`:''}`:'Confira os horários e as pausas: o tempo atendido deve ser maior que zero.';atualizarEtapas();}
   function limparIA(){aiGeracao++;aiBusy=false;$('hMelhorarIA').disabled=false;$('hMelhorarIA').textContent='Melhorar texto';$('hIASugestao').classList.add('hide');$('hTextoIA').value='';aiMsg('');}
-  function limpar(){editing=null;$('horasForm').reset();$('hSetor').value='';$('hPausa').value='0';$('horasFormTitulo').textContent='Registrar relatório';$('horasTitulo').textContent='Novo relatório de atendimento';$('hSalvar').textContent='Salvar relatório';$('hCancelar').textContent='Limpar formulário';$('hErro').textContent='';limparIA();previa();}
-  function editar(a){limpar();editing=a.id;$('horasFormTitulo').textContent='Editar relatório';$('horasTitulo').textContent='Editar relatório de atendimento';$('hSalvar').textContent='Salvar alterações';$('hCancelar').textContent='Cancelar edição';for(const [id,key]of[['hTitulo','titulo'],['hSetor','setor'],['hSolucao','solucao']])$(id).value=a[key]||'';$('hInicio').value=local(a.inicio);$('hFim').value=a.fim?local(a.fim):'';$('hPausa').value=a.pausa_minutos||0;previa();$('hTitulo').focus();}
+  function limpar(){editing=null;editandoOutro=null;$('horasForm').reset();$('hSetor').value='';$('hPausa').value='0';$('horasFormTitulo').textContent='Registrar relatório';$('horasTitulo').textContent='Novo relatório de atendimento';$('hSalvar').textContent='Salvar relatório';$('hCancelar').textContent='Limpar formulário';$('hErro').textContent='';limparIA();previa();}
+  function editar(a){const outro=a.usuario_id!==usuarioAtual?a:null;limpar();editing=a.id;editandoOutro=outro;$('horasFormTitulo').textContent='Editar relatório';$('horasTitulo').textContent=outro?`Editar relatório de ${nomeDe(a.usuario_id)}`:'Editar relatório de atendimento';$('hSalvar').textContent='Salvar alterações';$('hCancelar').textContent='Cancelar edição';for(const [id,key]of[['hTitulo','titulo'],['hSetor','setor'],['hSolucao','solucao']])$(id).value=a[key]||'';$('hInicio').value=local(a.inicio);$('hFim').value=a.fim?local(a.fim):'';$('hPausa').value=a.pausa_minutos||0;previa();$('hTitulo').focus();}
   $('hCancelar').onclick=()=>{limpar();$('hTitulo').focus();};$('horasAtualizar').onclick=()=>carregarHoras();$('hVerTodos').onclick=()=>{mostrarTodos=!mostrarTodos;render();$('hRegistrosTitulo').focus();};
   document.querySelectorAll('[data-foco]').forEach(b=>b.onclick=()=>$(b.dataset.foco).focus());
   document.querySelectorAll('[data-format]').forEach(b=>b.onclick=()=>{const campo=$('hSolucao'),inicio=campo.selectionStart,fim=campo.selectionEnd,selecionado=campo.value.slice(inicio,fim),tipo=b.dataset.format;
@@ -200,6 +239,8 @@
   for(const id of ['hTitulo','hSolucao'])$(id).addEventListener('input',atualizarEtapas);
   atualizarEtapas();
   for(const id of ['hDe','hAte','hFiltro'])$(id).addEventListener('input',render);
+  $('hColab').addEventListener('input',()=>{filtroColab=$('hColab').value;excluindoId=null;render();});
+  $('hEquipe').onclick=e=>{const b=e.target.closest('[data-h-colab]');if(!b)return;filtroColab=b.dataset.hColab;excluindoId=null;render();$('hColab').focus();};
   $('hLista').onclick=async e=>{
     if(busy)return;
     const editarBotao=e.target.closest('[data-h-editar]');if(editarBotao){const a=registros.find(a=>a.id===editarBotao.dataset.hEditar);if(a&&!a.relatorio_id)location.href=`index.html?editar=${encodeURIComponent(a.id)}#horasForm`;return;}
@@ -208,7 +249,7 @@
     const confirmar=e.target.closest('[data-h-confirmar]');if(!confirmar)return;
     const atual=registros.find(a=>a.id===confirmar.dataset.hConfirmar);if(!atual||atual.id!==excluindoId||atual.relatorio_id){excluirErro='Este relatório não pode mais ser excluído. Atualize a lista.';render();return;}
     busy=true;render();
-    try{const {data,error}=await sb.from('atendimentos').delete().eq('id',atual.id).eq('usuario_id',usuarioAtual).is('relatorio_id',null).eq('atualizado_em',atual.atualizado_em).select('id');if(error)throw error;if(data?.length!==1)throw new Error('O relatório mudou ou já foi incluído no envio ao RH. Atualize a lista e confira antes de excluir.');excluindoId=null;excluirErro='';if(editing===atual.id)limpar();msg('Relatório excluído. As horas foram atualizadas.');await carregarHoras();$('hResumo').focus();}
+    try{const {data,error}=await sb.from('atendimentos').delete().eq('id',atual.id).eq('usuario_id',atual.usuario_id).is('relatorio_id',null).eq('atualizado_em',atual.atualizado_em).select('id');if(error)throw error;if(data?.length!==1)throw new Error('O relatório mudou ou já foi incluído no envio ao RH. Atualize a lista e confira antes de excluir.');excluindoId=null;excluirErro='';if(editing===atual.id)limpar();msg('Relatório excluído. As horas foram atualizadas.');await carregarHoras();$('hResumo').focus();}
     catch(erro){excluirErro=erroTexto(erro);}
     finally{busy=false;if(ready)render();}
   };
@@ -218,9 +259,9 @@
     if(!Number.isFinite(inicio.getTime())||!Number.isFinite(fim.getTime()))return erro('Informe início e término válidos.');
     if(inicio>new Date()||fim>new Date())return erro('Os horários não podem estar no futuro.');
     if(!Number.isInteger(pausa)||pausa<0||(fim-inicio)/60000<=pausa)return erro('O término deve ser posterior ao início e as pausas devem ser menores que o intervalo.');
-    const atual=registros.find(a=>a.id===editing),payload={titulo,solucao,inicio:inicio.toISOString(),fim:fim.toISOString(),pausa_minutos:pausa,solicitante:atual?.solicitante||'',setor:$('hSetor').value.trim(),descricao:atual?.descricao||''};
+    const atual=registros.find(a=>a.id===editing)||(editandoOutro?.id===editing?editandoOutro:undefined),deOutro=!!editandoOutro,donoNome=deOutro?nomeDe(editandoOutro.usuario_id):'',payload={titulo,solucao,inicio:inicio.toISOString(),fim:fim.toISOString(),pausa_minutos:pausa,solicitante:atual?.solicitante||'',setor:$('hSetor').value.trim(),descricao:atual?.descricao||''};
     busy=true;$('hSalvar').disabled=true;$('hCancelar').disabled=true;limparIA();
-    try{const query=editing?sb.from('atendimentos').update(payload).eq('id',editing).is('relatorio_id',null).eq('atualizado_em',atual?.atualizado_em):sb.from('atendimentos').insert(payload);const {data,error}=await query.select('id');if(error)throw error;if(data.length!==1)throw new Error('O registro mudou. Atualize a lista e confira antes de editar.');limpar();msg('Relatório salvo. Suas horas foram atualizadas.');await carregarHoras();$('hTitulo').focus();}
+    try{const query=editing?sb.from('atendimentos').update(payload).eq('id',editing).is('relatorio_id',null).eq('atualizado_em',atual?.atualizado_em):sb.from('atendimentos').insert(payload);const {data,error}=await query.select('id');if(error)throw error;if(data.length!==1)throw new Error('O registro mudou. Atualize a lista e confira antes de editar.');limpar();msg(deOutro?`Relatório de ${donoNome} salvo. As horas foram atualizadas.`:'Relatório salvo. Suas horas foram atualizadas.');await carregarHoras();$('hTitulo').focus();}
     catch(e){erro(erroTexto(e));}finally{busy=false;$('hSalvar').disabled=false;$('hCancelar').disabled=false;if(ready)render();}
   };
   async function invoke(nome,body){const {data,error}=await sb.functions.invoke(nome,{body});if(error){let detail;try{detail=await error.context?.json();}catch{}throw new Error(detail?.error||(nome==='revisar-relatorio'?'A revisão com IA ainda não está disponível. Você pode continuar escrevendo e salvar normalmente.':'Não foi possível acessar o envio ao RH.'));}if(data?.error)throw new Error(data.error);return data;}
@@ -241,5 +282,5 @@
   async function enviar(body,botao){if(busy||!ENVIO_RH_ATIVO)return;busy=true;botao.disabled=true;msg('Enviando o resumo. Aguarde a confirmação…');try{const data=await invoke('enviar-relatorio-rh',body);msg(`Envio ${data.id.slice(0,8)} aceito pelo serviço de e-mail.`);}catch(e){msg(e.message,true);}finally{busy=false;botao.disabled=false;await carregarHoras();$('hResumo').focus();}}
   $('hEnviar').onclick=()=>enviar({ids:prontos.map(a=>a.id),versoes},$('hEnviar'));
   $('hHistorico').onclick=e=>{const b=e.target.closest('[data-h-retomar]');if(b)enviar({relatorio_id:b.dataset.hRetomar},b);};
-  $('hCsv').onclick=()=>{const itens=filtrados().filter(a=>a.fim),cel=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"',rows=[['Colaborador','Início (Brasília)','Término (Brasília)','Pausas (min)','Tempo atendido (min)','Assunto','Solicitante','Setor','Contexto anterior','Relato','Envio ao RH']];itens.forEach(a=>rows.push([perfil.nome,brasil(a.inicio),brasil(a.fim),a.pausa_minutos,Number(a.minutos).toFixed(2),a.titulo,a.solicitante,a.setor,a.descricao,a.solucao,estado(a)]));const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(cel).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='relatorios-ti.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  $('hCsv').onclick=()=>{const itens=filtrados().filter(a=>a.fim),cel=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"',rows=[['Colaborador','Início (Brasília)','Término (Brasília)','Pausas (min)','Tempo atendido (min)','Assunto','Solicitante','Setor','Contexto anterior','Relato','Envio ao RH']];itens.forEach(a=>rows.push([nomeDe(a.usuario_id),brasil(a.inicio),brasil(a.fim),a.pausa_minutos,Number(a.minutos).toFixed(2),a.titulo,a.solicitante,a.setor,a.descricao,a.solucao,estado(a)]));const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(cel).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='relatorios-ti.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 })();
