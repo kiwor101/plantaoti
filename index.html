@@ -3,219 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plantões TI</title>
+<title>Plantão TI · Relatórios</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#f3f5f7;--card:#fff;--ink:#16202b;--mute:#5d6b7a;--line:#d8dee5;--brand:#0f5c6e;--brand-ink:#fff;--open:#b45309;--openbg:#fef3dc;--ok:#1f7a4d;--okbg:#e2f4ea;--bad:#b3261e}
-@media(prefers-color-scheme:dark){:root{--bg:#111820;--card:#1a232d;--ink:#e8eef3;--mute:#93a1af;--line:#2c3947;--brand:#4fb3c8;--brand-ink:#08222a;--open:#f0b45a;--openbg:#3a2c12;--ok:#5cc990;--okbg:#14301f;--bad:#ff8a80}}
+:root{color-scheme:light;--bg:#f6f8fb;--card:#fff;--ink:#111a33;--mute:#67758d;--line:#dce3ec;--brand:#07827d;--brand-ink:#fff;--brand-soft:#e8f6f4;--ok:#176d4d;--okbg:#e2f4ea;--bad:#b3261e;--open:#8a4207;--openbg:#fef3dc}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-header h1{font-size:17px;margin:0;flex:1}
-main{max-width:920px;margin:0 auto;padding:20px}
+header{display:flex;align-items:center;gap:13px;padding:12px 26px;background:var(--card);border-bottom:1px solid #edf0f4;min-height:64px}
+header h1{font-size:30px;letter-spacing:-.04em;margin:0;flex:1;line-height:1}header h1 span{color:var(--brand)}header #quem{overflow-wrap:anywhere;color:var(--ink);font-size:14px}header #avatar{display:grid;place-items:center;width:35px;height:35px;background:#e3e7ee;border-radius:50%;font-size:12px;font-weight:600;color:var(--ink)}
+main{max-width:1600px;margin:0 auto;padding:22px 20px 64px 4px}
 button,input,select,textarea{font:inherit;color:inherit}
-input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
-textarea{min-height:90px;resize:vertical}
-label{display:block;font-weight:500;font-size:13px;margin:12px 0 4px}
-button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:6px}
-button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:500}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
-.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
-.bar select,.bar input{width:auto}.grow{flex:1}
-.item{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--open);border-radius:6px;padding:12px 14px;margin-bottom:10px}
-.item.Fechado{border-left-color:var(--ok)}
-.item h3{margin:0 0 4px;font-size:15px}
-.meta{color:var(--mute);font-size:13px}
-.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;background:var(--openbg);color:var(--open);margin-right:6px;font-weight:500}
-.tag.Fechado{background:var(--okbg);color:var(--ok)}
-.tag.Crítica,.tag.Alta{background:var(--bad);color:var(--brand-ink)}
-.sol{margin-top:8px;padding:8px 10px;background:var(--okbg);border-radius:6px;white-space:pre-wrap}
-.desc{white-space:pre-wrap;margin:6px 0 0}
-.login{max-width:340px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:24px}
-.login h1{margin:0 0 4px;font-size:20px}
-dialog{border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:min(520px,94vw);padding:20px}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.err{color:var(--bad);min-height:20px;font-size:13px}
-.empty{text-align:center;color:var(--mute);padding:40px 0}
-.hide{display:none!important}
-@media(max-width:520px){.row{grid-template-columns:1fr}}
+input,select,textarea{width:100%;min-width:0;padding:10px 14px;border:1px solid #cbd5e3;border-radius:7px;background:var(--card);caret-color:var(--brand)}
+textarea{min-height:150px;resize:vertical}
+label{display:block;font-weight:500;font-size:14px;margin:16px 0 6px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:10px 16px;border-radius:7px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+button:hover:not(:disabled){border-color:var(--brand)}button:disabled{opacity:.55;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+::selection{background:var(--brand);color:var(--brand-ink)}
+.meta{color:var(--mute);font-size:13px}.desc{white-space:pre-wrap;overflow-wrap:anywhere}
+.login{max-width:360px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:24px}
+.login h1{margin:0 0 4px;font-size:22px}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.err{color:var(--bad);font-size:14px}.hide{display:none!important}
+@media(max-width:600px){main{padding:14px 12px 40px}.row{grid-template-columns:1fr;gap:0}header{padding:12px 16px;gap:10px}header h1{font-size:23px}header #quem{font-size:12px;max-width:100px}.login{margin:8vh 16px}}
 </style>
+<link rel="stylesheet" href="login.css">
 </head>
 <body>
+<form id="telaLogin" class="login-screen hide">
+  <section class="login-story" aria-label="Apresentação do Plantão TI">
+    <div class="login-brand"><span class="login-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8Z"/><path d="M8 3v5h8M8 13l2 2-2 2m5 0h3"/></svg></span><span>Plantão <span>TI</span></span></div>
+    <div class="code-window" aria-hidden="true"><div class="code-window-header"><i></i><i></i><i></i><span>exemplo ilustrativo · plantao.js</span></div><pre><code><span class="syntax-muted">// Cada atendimento, no seu tempo.</span>
+<span class="syntax-blue">const</span> atendimento = {
+  inicio: <span class="syntax-gold">"19:00"</span>,
+  termino: <span class="syntax-gold">"20:15"</span>,
+  relato: <span class="syntax-gold">"Suporte concluído"</span>
+};
 
-<div id="telaLogin" class="login hide">
-  <h1>Plantões TI</h1>
-  <div class="meta">Entre com sua conta Microsoft da Santa Casa.</div>
-  <p class="err" id="erroLogin"></p>
-  <button class="primary" id="btnEntrar" style="width:100%">Entrar com Microsoft</button>
-</div>
-
+<span class="syntax-cyan">registrar</span>(atendimento);</code></pre></div>
+    <div class="login-story-copy"><h2>Seu plantão, <em>registrado com clareza.</em></h2><p>Registre os atendimentos e acompanhe as horas acumuladas em um só lugar.</p></div>
+  </section>
+  <div class="login-panel"><div class="login-panel-inner">
+    <div class="login-brand login-mobile-brand"><span class="login-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8Z"/><path d="M8 3v5h8M8 13l2 2-2 2m5 0h3"/></svg></span><span>Plantão <span>TI</span></span></div>
+    <h1>Acesse seu plantão</h1><p class="login-panel-intro">Entre com sua conta Microsoft para registrar e conferir seus relatórios.</p>
+    <label class="login-remember" for="lembrarAcesso"><input id="lembrarAcesso" type="checkbox">Manter conectado neste dispositivo</label>
+    <p class="err" id="erroLogin" role="alert"></p>
+    <button type="submit" class="primary login-microsoft" id="btnEntrar"><svg viewBox="0 0 21 21" aria-hidden="true"><path fill="#f25022" d="M1 1h9v9H1z"/><path fill="#7fba00" d="M11 1h9v9h-9z"/><path fill="#00a4ef" d="M1 11h9v9H1z"/><path fill="#ffb900" d="M11 11h9v9h-9z"/></svg>Entrar com Microsoft</button>
+    <p class="login-memory-help login-microsoft-help">Use sua conta institucional @santacasaandradina.org. Só entram e-mails liberados pela gerência de TI.</p>
+  </div></div>
+</form>
 <div id="telaApp" class="hide">
-  <header>
-    <h1>Plantões TI</h1>
-    <span class="meta" id="quem"></span>
-    <button id="btnSair">Sair</button>
-  </header>
-  <main>
-    <div class="bar">
-      <button class="primary" id="btnNovo">Abrir chamado</button>
-      <select id="fStatus" aria-label="Status">
-        <option value="">Todos os status</option><option>Aberto</option><option>Fechado</option>
-      </select>
-      <label class="meta" style="margin:0" for="fData">Plantão de</label>
-      <input type="date" id="fData" aria-label="Data do plantão">
-      <input class="grow" id="fBusca" placeholder="Buscar por título, problema ou solução">
-    </div>
-    <div id="lista"></div>
-  </main>
+  <header><h1>Plantão <span>TI</span></h1><span id="avatar" aria-hidden="true"></span><span class="meta" id="quem"></span><button id="btnSair">Sair</button></header>
+  <main></main>
 </div>
-
-<dialog id="dlgNovo">
-  <h2 style="margin-top:0">Abrir chamado</h2>
-  <label for="nTitulo">Título</label><input id="nTitulo" maxlength="120">
-  <label for="nDesc">Descrição do problema</label><textarea id="nDesc"></textarea>
-  <div class="row">
-    <div><label for="nSol">Solicitante</label><input id="nSol" placeholder="Quem pediu ajuda"></div>
-    <div><label for="nCat">Categoria</label>
-      <select id="nCat"><option>Rede</option><option>Servidor</option><option>Sistema</option><option>Telefonia</option><option>Equipamento</option><option>Acesso/Senha</option><option>Outros</option></select></div>
-    <div><label for="nPri">Prioridade</label>
-      <select id="nPri"><option>Baixa</option><option selected>Média</option><option>Alta</option><option>Crítica</option></select></div>
-    <div><label for="nData">Data do plantão</label><input type="date" id="nData"></div>
-  </div>
-  <p class="err" id="erroNovo"></p>
-  <div style="display:flex;gap:8px;justify-content:flex-end">
-    <button id="cancNovo">Cancelar</button><button class="primary" id="salvarNovo">Salvar chamado</button>
-  </div>
-</dialog>
-
-<dialog id="dlgFechar">
-  <h2 style="margin-top:0">Fechar chamado</h2>
-  <div class="meta" id="fechaTitulo"></div>
-  <label for="fSolucao">Solução aplicada</label><textarea id="fSolucao"></textarea>
-  <p class="err" id="erroFechar"></p>
-  <div style="display:flex;gap:8px;justify-content:flex-end">
-    <button id="cancFechar">Cancelar</button><button class="primary" id="salvarFechar">Fechar chamado</button>
-  </div>
-</dialog>
-
-<script>
-// ====== CONFIGURE AQUI (Supabase > Project Settings > API) ======
-const SUPABASE_URL = "https://iyrlbfrsrolwhybumler.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_DzO4wyz9PQsy8enPNF00tg_RHlVStkh"; // chave publicável — protegida pelas políticas RLS
-// ================================================================
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const $ = id => document.getElementById(id);
-let user = null, perfil = null, chamados = [], fecharId = null;
-
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmt = d => d ? new Date(d).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}) : "";
-const fmtData = d => d ? d.split("-").reverse().join("/") : "";
-
-// sábado do fim de semana atual (ou o anterior, se hoje for domingo)
-function sabadoAtual(){
-  const d = new Date(), dia = d.getDay();
-  d.setDate(d.getDate() - (dia === 0 ? 1 : dia === 6 ? 0 : dia - 6));
-  return d.toISOString().slice(0,10);
-}
-
-async function iniciar(){
-  // erro devolvido pelo login Microsoft (ex.: e-mail fora da lista de liberados)
-  const ret = new URLSearchParams(location.search + "&" + location.hash.slice(1));
-  const erroRetorno = ret.get("error_description");
-  if (erroRetorno) history.replaceState(null, "", location.pathname);
-  const { data:{ session } } = await sb.auth.getSession();
-  if (session) return entrou(session.user);
-  mostrarLogin();
-  if (erroRetorno) $("erroLogin").textContent = /saving new user|não liberado/i.test(erroRetorno)
-    ? "Seu e-mail não está liberado para o Plantões TI. Fale com o gerente da TI."
-    : "Não foi possível entrar: " + erroRetorno;
-}
-function mostrarLogin(){ $("telaLogin").classList.remove("hide"); $("telaApp").classList.add("hide"); }
-
-async function entrou(u){
-  user = u;
-  const { data } = await sb.from("perfis").select("*").eq("id", u.id).single();
-  perfil = data;
-  $("quem").textContent = perfil ? perfil.nome : u.email;
-  $("telaLogin").classList.add("hide"); $("telaApp").classList.remove("hide");
-  carregar();
-}
-
-$("btnEntrar").onclick = async () => {
-  $("erroLogin").textContent = "";
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: "azure",
-    options: {
-      scopes: "openid email profile",
-      redirectTo: location.origin + location.pathname,
-      queryParams: { prompt: "select_account" }  // sempre mostra a escolha de conta Microsoft
-    }
-  });
-  if (error) $("erroLogin").textContent = "Não foi possível abrir o login Microsoft: " + error.message;
-};
-$("btnSair").onclick = async () => { await sb.auth.signOut(); location.reload(); };
-
-async function carregar(){
-  const { data, error } = await sb.from("v_chamados").select("*").order("aberto_em",{ascending:false}).limit(500);
-  if (error) { $("lista").innerHTML = `<div class="empty">Não foi possível carregar os chamados: ${esc(error.message)}</div>`; return; }
-  chamados = data; desenhar();
-}
-
-function desenhar(){
-  const st = $("fStatus").value, dt = $("fData").value, q = $("fBusca").value.toLowerCase();
-  const itens = chamados.filter(c =>
-    (!st || c.status === st) && (!dt || c.plantao_data === dt) &&
-    (!q || [c.titulo,c.descricao,c.solucao,c.solicitante].join(" ").toLowerCase().includes(q)));
-  if (!itens.length) { $("lista").innerHTML = `<div class="empty">Nenhum chamado encontrado. Use “Abrir chamado” para registrar o primeiro.</div>`; return; }
-  $("lista").innerHTML = itens.map(c => `
-    <article class="item ${c.status}">
-      <h3>#${c.id} · ${esc(c.titulo)}</h3>
-      <div><span class="tag ${c.status}">${c.status}</span><span class="tag ${c.prioridade}">${c.prioridade}</span><span class="meta">${esc(c.categoria)} · plantão ${fmtData(c.plantao_data)}</span></div>
-      <p class="desc">${esc(c.descricao)}</p>
-      <div class="meta">Aberto por ${esc(c.aberto_por_nome)} em ${fmt(c.aberto_em)}${c.solicitante ? " · solicitante: " + esc(c.solicitante) : ""}</div>
-      ${c.status === "Fechado"
-        ? `<div class="sol"><b>Solução:</b> ${esc(c.solucao)}<div class="meta">Fechado por ${esc(c.fechado_por_nome)} em ${fmt(c.fechado_em)}</div></div>`
-        : `<div style="margin-top:8px"><button data-fechar="${c.id}">Fechar com solução</button></div>`}
-    </article>`).join("");
-}
-["fStatus","fData","fBusca"].forEach(id => $(id).addEventListener("input", desenhar));
-$("lista").addEventListener("click", e => {
-  const id = e.target.dataset.fechar; if (!id) return;
-  fecharId = +id; const c = chamados.find(x => x.id === fecharId);
-  $("fechaTitulo").textContent = `#${c.id} · ${c.titulo}`; $("fSolucao").value = ""; $("erroFechar").textContent = "";
-  $("dlgFechar").showModal();
-});
-
-$("btnNovo").onclick = () => {
-  ["nTitulo","nDesc","nSol"].forEach(i => $(i).value = ""); $("nData").value = sabadoAtual(); $("erroNovo").textContent = "";
-  $("dlgNovo").showModal();
-};
-$("cancNovo").onclick = () => $("dlgNovo").close();
-$("cancFechar").onclick = () => $("dlgFechar").close();
-
-$("salvarNovo").onclick = async () => {
-  const titulo = $("nTitulo").value.trim(), descricao = $("nDesc").value.trim();
-  if (!titulo || !descricao) return $("erroNovo").textContent = "Preencha o título e a descrição do problema.";
-  const { error } = await sb.from("chamados").insert({
-    titulo, descricao, solicitante:$("nSol").value.trim() || null, categoria:$("nCat").value,
-    prioridade:$("nPri").value, plantao_data:$("nData").value });
-  if (error) return $("erroNovo").textContent = "Erro ao salvar: " + error.message;
-  $("dlgNovo").close(); carregar();
-};
-
-$("salvarFechar").onclick = async () => {
-  const solucao = $("fSolucao").value.trim();
-  if (!solucao) return $("erroFechar").textContent = "Descreva a solução aplicada para fechar o chamado.";
-  const { error } = await sb.from("chamados").update({ status:"Fechado", solucao, fechado_por:user.id, fechado_em:new Date().toISOString() }).eq("id", fecharId);
-  if (error) return $("erroFechar").textContent = "Erro ao fechar: " + error.message;
-  $("dlgFechar").close(); carregar();
-};
-
-iniciar();
-</script>
+<script src="app-auth.js"></script>
+<script src="relatorios.js"></script>
+<script>iniciar();</script>
 </body>
 </html>
