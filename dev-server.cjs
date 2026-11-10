@@ -9,6 +9,15 @@ const files = {
   '/relatorios.js': ['relatorios.js', 'text/javascript; charset=utf-8'],
   '/app-auth.js': ['app-auth.js', 'text/javascript; charset=utf-8'],
   '/login.css': ['login.css', 'text/css; charset=utf-8'],
+  '/pwa.js': ['pwa.js', 'text/javascript; charset=utf-8'],
+  '/sw.js': ['sw.js', 'text/javascript; charset=utf-8'],
+  '/offline.html': ['offline.html', 'text/html; charset=utf-8'],
+  '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json'],
+  '/icons/icon-192.png': ['icons/icon-192.png', 'image/png'],
+  '/icons/icon-512.png': ['icons/icon-512.png', 'image/png'],
+  '/icons/icon-maskable-512.png': ['icons/icon-maskable-512.png', 'image/png'],
+  '/icons/apple-touch-icon.png': ['icons/apple-touch-icon.png', 'image/png'],
+  '/icons/favicon-32.png': ['icons/favicon-32.png', 'image/png'],
 };
 
 http.createServer((request, response) => {
