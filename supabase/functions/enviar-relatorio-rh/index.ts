@@ -20,7 +20,7 @@ const soData = (s: string) => new Intl.DateTimeFormat('pt-BR',{timeZone:fuso}).f
 const soHora = (s: string) => new Intl.DateTimeFormat('pt-BR',{timeZone:fuso,hour:'2-digit',minute:'2-digit'}).format(new Date(s));
 const tempo = (n: number) => {const m=Math.round(n);return `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}min`;};
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-type Item = {titulo:string;inicio:string;fim:string;pausa_minutos:number;minutos:number;solicitante:string;setor:string;descricao:string;solucao:string};
+type Item = {titulo:string;inicio:string;fim:string;minutos:number;solicitante:string;setor:string;descricao:string;solucao:string};
 // Código que o navegador usa para pedir uma nova confirmação da conta Microsoft.
 const TOKEN_MS = 'token_microsoft';
 
@@ -43,10 +43,10 @@ function periodo(itens: Item[]){
   if(primeiro===ultimo)return {texto:`Atendimentos de ${soData(ord[0].inicio)}`,arquivo:primeiro};
   return {texto:`Período de ${soData(ord[0].inicio)} a ${soData(ord[ord.length-1].inicio)}`,arquivo:`${primeiro}_a_${ultimo}`};
 }
-function totaisPorTipo(itens: Item[]){
-  let fds=0,semana=0;for(const a of itens){if(fimDeSemana(a.inicio))fds+=Number(a.minutos);else semana+=Number(a.minutos);}
-  return {fds,semana,texto:[fds?`Plantão de fim de semana: ${tempo(fds)}`:'',semana?`Durante a semana: ${tempo(semana)}`:''].filter(Boolean).join('    ')};
-}
+// O chamado conta no dia em que começou; se terminou em outro dia, o término leva "(+1 dia)".
+const diasDepois = (a: Item) => Math.round((Date.parse(partes(a.fim).dia)-Date.parse(partes(a.inicio).dia))/DIA);
+const terminoPdf = (a: Item) => {const n=diasDepois(a);return n>0?`${soHora(a.fim)} (+${n} dia${n>1?'s':''})`:soHora(a.fim);};
+const quemPediu = (a: Item, sep: string) => `${a.solicitante?.trim()||'—'}${sep}${a.setor?.trim()||'—'}`;
 const nomeArquivo = (nome: string, itens: Item[]) => `Plantao-TI_${nome.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'')}_${periodo(itens).arquivo}.pdf`;
 
 function gerarPdf(nome: string, itens: Item[], referencia: string, enviadoPor?: string){
@@ -58,21 +58,20 @@ function gerarPdf(nome: string, itens: Item[], referencia: string, enviadoPor?: 
   doc.text('Plantão TI · Atendimentos fora do expediente',14,16);
   doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(70,76,88);
   doc.text(`Colaborador: ${nome}    ${per.texto}`,14,23);
-  doc.text(`${ord.length} atendimento(s)    Total: ${tempo(total)} de trabalho efetivo (pausas descontadas, horário de Brasília)`,14,28.5);
-  doc.text(totaisPorTipo(ord).texto,14,34);
-  if(enviadoPor)doc.text(`Enviado por ${enviadoPor} (gerente da TI)`,14,39.5);
+  doc.text(`${ord.length} atendimento(s)    Total: ${tempo(total)} (horário de Brasília)`,14,28.5);
+  if(enviadoPor)doc.text(`Enviado por ${enviadoPor} (gerente da TI)`,14,34);
   autoTable(doc,{
-    startY:enviadoPor?44:39,
-    head:[['Data','Início','Término','Pausas','Tempo','Solicitante / setor','Atividade']],
-    body:ord.map(a=>[`${soData(a.inicio)}\n${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}`,soHora(a.inicio),soHora(a.fim),`${a.pausa_minutos} min`,tempo(Number(a.minutos)),[a.solicitante,a.setor].filter(Boolean).join('\n'),
+    startY:enviadoPor?39:33,
+    head:[['Data','Início','Término','Tempo','Solicitante / setor','Atividade']],
+    body:ord.map(a=>[`${soData(a.inicio)}\n${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}`,soHora(a.inicio),terminoPdf(a),tempo(Number(a.minutos)),quemPediu(a,'\n'),
       `${a.titulo}${a.descricao?'\n'+a.descricao:''}\nServiço realizado: ${a.solucao}`]),
-    foot:[['','','','Total',tempo(total),'','']],
+    foot:[['','','Total',tempo(total),'','']],
     theme:'grid',
     styles:{font:'helvetica',fontSize:8.5,cellPadding:2,valign:'top',textColor:[30,34,42],lineColor:[214,220,230]},
     headStyles:{fillColor:azul,textColor:255,fontStyle:'bold'},
     footStyles:{fillColor:[234,241,253],textColor:[20,24,31],fontStyle:'bold'},
     showFoot:'lastPage',
-    columnStyles:{0:{cellWidth:21},1:{cellWidth:15},2:{cellWidth:18},3:{cellWidth:16},4:{cellWidth:22},5:{cellWidth:42}},
+    columnStyles:{0:{cellWidth:27},1:{cellWidth:15},2:{cellWidth:27},3:{cellWidth:22},4:{cellWidth:48}},
     margin:{left:14,right:14,bottom:16},
     didDrawPage:()=>{doc.setFontSize(8);doc.setTextColor(120,126,138);
       doc.text(`Referência: ${referencia} · Gerado em ${data(new Date().toISOString())}`,14,doc.internal.pageSize.getHeight()-8);
@@ -154,9 +153,9 @@ Deno.serve(async req => {
     const itens=[...relatorio.itens as Item[]].sort((x,y)=>x.inicio.localeCompare(y.inicio)), total=itens.reduce((s,a)=>s+Number(a.minutos),0);
     const porOutro=relatorio.usuario_id!==auth.user.id, per=periodo(itens);
     const assunto=`Plantão TI · ${relatorio.nome} · ${per.texto}`;
-    const linhas=itens.map(a=>`<tr><td>${esc(data(a.inicio))}<br><small>${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}</small></td><td>${esc(data(a.fim))}</td><td>${a.pausa_minutos} min</td><td>${tempo(Number(a.minutos))}</td><td>${esc(a.solicitante)}<br>${esc(a.setor)}</td><td><strong>${esc(a.titulo)}</strong><br>${esc(a.descricao)}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`).join('');
+    const linhas=itens.map(a=>`<tr><td>${esc(data(a.inicio))}<br><small>${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}</small></td><td>${esc(data(a.fim))}</td><td>${tempo(Number(a.minutos))}</td><td>${esc(quemPediu(a,'\n')).replace('\n','<br>')}</td><td><strong>${esc(a.titulo)}</strong><br>${esc(a.descricao)}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`).join('');
     const enviadoPor=porOutro?`<p>Enviado por <strong>${esc(eu.nome)}</strong> (gerente da TI).</p>`:'';
-    const html=`<html lang="pt-BR"><body><h1>Atendimentos fora do expediente</h1><p>Olá, equipe de RH.</p><p>Segue o relatório de <strong>${esc(relatorio.nome)}</strong> (${esc(per.texto)}), com ${itens.length} atendimento(s) e ${tempo(total)} de trabalho efetivo. O mesmo relatório segue em PDF, anexo.</p><p>${esc(totaisPorTipo(itens).texto).replace(/ {4}/g,'<br>')}</p>${enviadoPor}<p>Horários de Brasília. As pausas já foram descontadas. Durações exibidas arredondadas ao minuto; o total é calculado antes do arredondamento.</p><table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Início</th><th>Término</th><th>Pausas</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Atividade</th></tr></thead><tbody>${linhas}</tbody></table><p>Referência: ${esc(relatorio.id)}</p></body></html>`;
+    const html=`<html lang="pt-BR"><body><h1>Atendimentos fora do expediente</h1><p>Olá, equipe de RH.</p><p>Segue o relatório de <strong>${esc(relatorio.nome)}</strong> (${esc(per.texto)}), com ${itens.length} atendimento(s) e ${tempo(total)} de trabalho efetivo. O mesmo relatório segue em PDF, anexo.</p>${enviadoPor}<p>Horários de Brasília. Durações exibidas arredondadas ao minuto; o total é calculado antes do arredondamento.</p><table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Início</th><th>Término</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Atividade</th></tr></thead><tbody>${linhas}</tbody></table><p>Referência: ${esc(relatorio.id)}</p></body></html>`;
     const anexo={'@odata.type':'#microsoft.graph.fileAttachment',name:nomeArquivo(relatorio.nome,itens),contentType:'application/pdf',
       contentBytes:gerarPdf(relatorio.nome,itens,relatorio.id,porOutro?eu.nome:undefined)};
 

@@ -95,13 +95,12 @@
     .regua-barra i{display:block;width:100%;min-height:3px}.b-fds{background:var(--fds)}.b-sem{background:var(--sem)}
     .regua-dia span{font-size:12px;color:var(--mute)}.regua-fim span{color:var(--fds);font-weight:600}
     .regua-plantao{grid-column:5 / 8;border-top:2px solid var(--fds);color:var(--fds);font-size:11px;text-align:center;padding-top:3px}
-    .rel-legenda{display:flex;flex-wrap:wrap;gap:4px 16px;margin:10px 0 0;font-size:13px;color:var(--mute)}.rel-legenda b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;margin-left:3px}
-    .leg-fds:before,.leg-sem:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}.leg-fds:before{background:var(--fds)}.leg-sem:before{background:var(--sem)}
     #horas #horasPreview{margin:0 0 22px}#hPreviewResumo{font-size:14px}
     #horas .dia{margin:0 0 18px}#horas .dia h4{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 8px;padding:0 2px;font-size:14px;font-weight:600}#horas .dia h4 span:first-letter{text-transform:uppercase}#horas .dia h4 small{color:var(--mute);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
-    #horas .reg{display:grid;grid-template-columns:58px minmax(0,1fr) auto 78px auto;grid-template-areas:"hora corpo tags dur acao";gap:6px 16px;align-items:start;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--sem);border-radius:8px;padding:12px 14px;margin:0 0 6px}
+    #horas .reg{display:grid;grid-template-columns:66px minmax(0,1fr) auto 78px auto;grid-template-areas:"hora corpo tags dur acao";gap:6px 16px;align-items:start;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--sem);border-radius:8px;padding:12px 14px;margin:0 0 6px}
     #horas .reg-fds{border-left-color:var(--fds)}
-    .reg-hora{grid-area:hora;font-variant-numeric:tabular-nums}.reg-hora strong{display:block;font-size:15px}.reg-hora span{font-size:13px;color:var(--mute)}
+    .reg-hora{grid-area:hora;font-variant-numeric:tabular-nums}.reg-hora strong{display:block;font-size:15px}.reg-hora span{font-size:13px;color:var(--mute);white-space:nowrap}.reg-hora small{font-size:11px;font-weight:600;color:var(--fds)}
+    #hRegistrosTitulo:focus{outline:none}
     .reg-corpo{grid-area:corpo;min-width:0}#hLista .reg .registro-expandir summary{white-space:normal;font-weight:600;font-size:15px;cursor:pointer}#hLista .reg .registro-conteudo{width:auto;padding:8px 0 2px;font-size:14px}
     .reg-quem{display:flex;flex-wrap:wrap;gap:0 8px;margin:3px 0 0;font-size:13px;color:var(--mute)}.reg-quem span+span:before{content:"/";margin-right:8px;color:#c3cbd7}
     .reg-tags{grid-area:tags;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}#horas .reg .tag{margin:0;white-space:nowrap}#horas .tag.a-enviar{background:var(--openbg);color:var(--open)}#horas .tag-fds{background:var(--fds-soft);color:var(--fds)}
@@ -111,7 +110,7 @@
     #horas .rel-envios{margin-top:30px}#horas .rel-envios h4{font-size:17px;margin:0 0 2px}.rel-envios>.meta{margin:0 0 6px}
     .envio{display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid var(--line);padding:12px 0}.envio p{margin:3px 0 0}.envio-acoes{display:flex;gap:6px;flex:none}.envio-acoes button{padding:5px 11px;font-size:13px}
     @media(max-width:760px){#horas .rel-painel{grid-template-columns:1fr;grid-template-areas:"num" "semana" "acoes";padding:18px}.rel-total strong{font-size:36px}.rel-acoes button{flex:1}
-      #horas .reg{grid-template-columns:48px minmax(0,1fr) auto;grid-template-areas:"hora corpo dur" "hora tags acao";gap:8px 12px}.reg-tags{justify-content:flex-start}.envio{flex-direction:column;align-items:flex-start}#horas .horas-lista-top h3{font-size:24px!important}}
+      #horas .reg{grid-template-columns:62px minmax(0,1fr) auto;grid-template-areas:"hora corpo dur" "hora tags acao";gap:8px 12px}.reg-tags{justify-content:flex-start}.envio{flex-direction:column;align-items:flex-start}#horas .horas-lista-top h3{font-size:24px!important}}
     @media(max-width:900px){#telaApp main{padding-left:16px;padding-right:16px}}
     @media(max-width:600px){.rel-chips{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px;scrollbar-width:none;flex-basis:calc(100% + 32px)}.rel-chips::-webkit-scrollbar{display:none}.rel-chips button{flex:none}.rel-acoes .primary{flex-basis:100%}}
   `;
@@ -127,6 +126,10 @@
           <div class="etapas" aria-label="Progresso do formulário"><button type="button" data-foco="hTitulo"><span aria-hidden="true">1</span>Dados</button><i aria-hidden="true"></i><button type="button" data-foco="hInicio"><span aria-hidden="true">2</span>Atendimento</button><i aria-hidden="true"></i><button type="button" data-foco="hSolucao"><span aria-hidden="true">3</span>Relato</button></div><span id="hEtapaStatus" class="sr-only" role="status"></span>
           <label for="hTitulo">Assunto *</label><input id="hTitulo" maxlength="120" placeholder="Descreva o assunto do atendimento..." required>
           <div class="row">
+            <div><label for="hSolicitante">Solicitante *</label><input id="hSolicitante" maxlength="120" placeholder="Ex.: Maria - enfermeira" autocomplete="off" required></div>
+            <div><label for="hSetor">Setor *</label><input id="hSetor" maxlength="120" placeholder="Ex.: UTI adulto" autocomplete="off" required></div>
+          </div>
+          <div class="row">
             <div><label for="hInicio">Início *</label><input id="hInicio" type="datetime-local" required></div>
             <div><label for="hFim">Término *</label><input id="hFim" type="datetime-local" required></div>
           </div>
@@ -141,7 +144,6 @@
             <label for="hTextoIA">Texto revisado</label><textarea id="hTextoIA" maxlength="5000"></textarea>
             <div class="horas-actions"><button id="hUsarIA" type="button">Usar sugestão</button><button id="hDescartarIA" type="button">Manter meu texto</button></div>
           </section>
-          <input id="hSetor" type="hidden"><input id="hPausa" type="hidden" value="0">
           <p class="err" id="hErro" role="alert"></p>
           <div class="horas-actions"><button type="submit" class="primary" id="hSalvar">Salvar relatório</button><button type="button" id="hCancelar">Limpar formulário</button></div>
         </form>
@@ -162,7 +164,7 @@
         <section id="hPainel" class="rel-painel" aria-label="Resumo do período">
           <div class="rel-numeros"><p class="rel-total"><strong id="hTotalHoras">0h 00min</strong> <span id="hResumo" tabindex="-1" aria-live="polite">Carregando seus registros…</span></p>
             <p class="rel-situacoes"><span id="hQtdEnviar"></span><span id="hQtdEnviados"></span></p></div>
-          <div class="rel-semana"><div id="hRegua" class="regua" role="img"></div><p id="hLegenda" class="rel-legenda"></p></div>
+          <div class="rel-semana"><div id="hRegua" class="regua" role="img"></div></div>
           <div class="rel-acoes"><button id="hPreparar" class="primary" disabled>Conferir e enviar ao RH</button><button id="hPdf" disabled>Baixar PDF</button><button id="hCsv" disabled>Exportar CSV</button></div>
         </section>
         <section id="horasPreview" class="hide" aria-labelledby="hPreviewTitulo"><h3 id="hPreviewTitulo" tabindex="-1">Conferir antes de enviar</h3>
@@ -244,9 +246,13 @@
     const horario=d=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}).format(new Date(d)),fds=ehFds(a.inicio);
     // Editar só antes do envio ao RH; excluir sempre (o banco guarda uma cópia para auditoria).
     const acoes=`${!a.relatorio_id?`<button type="button" data-h-editar="${a.id}" aria-label="Editar ${esc(a.titulo)}">Editar</button>`:''}<button type="button" data-h-excluir="${a.id}" aria-label="Excluir ${esc(a.titulo)}">Excluir</button>`;
-    const quem=[verEquipe()?nomeDe(a.usuario_id):'',a.solicitante,a.setor].filter(Boolean);
-    const linha=`<article class="reg${fds?' reg-fds':''}"><div class="reg-hora"><strong>${horario(a.inicio)}</strong><span>${a.fim?horario(a.fim):'—'}</span></div>
-      <div class="reg-corpo"><details class="registro-expandir"><summary>${esc(a.titulo)}</summary><div class="registro-conteudo">${a.pausa_minutos?`<p class="meta">Pausas: ${a.pausa_minutos} min</p>`:''}${a.descricao?`<p class="desc">${esc(a.descricao)}</p>`:''}<p class="desc">${esc(a.solucao)}</p></div></details>${quem.length?`<p class="reg-quem">${quem.map(q=>`<span>${esc(q)}</span>`).join('')}</p>`:''}</div>
+    // Solicitante / setor sempre visíveis; registros antigos sem eles mostram "—".
+    const quem=[...(verEquipe()?[nomeDe(a.usuario_id)]:[]),a.solicitante?.trim()||'—',a.setor?.trim()||'—'];
+    // O chamado conta no dia em que começou; se terminou no dia seguinte, marca "+1d".
+    const outroDia=a.fim&&diaBrasil(a.fim)!==diaBrasil(a.inicio),fimTexto=!a.fim?'—':outroDia?`${horario(a.fim)} <small>+${Math.round((new Date(diaBrasil(a.fim))-new Date(diaBrasil(a.inicio)))/864e5)}d</small>`:horario(a.fim);
+    const fimDica=outroDia?` title="termina em ${new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(new Date(a.fim))} às ${horario(a.fim)}" aria-label="termina em ${new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(new Date(a.fim))} às ${horario(a.fim)}"`:'';
+    const linha=`<article class="reg${fds?' reg-fds':''}"><div class="reg-hora"><strong>${horario(a.inicio)}</strong><span${fimDica}>${fimTexto}</span></div>
+      <div class="reg-corpo"><details class="registro-expandir"><summary>${esc(a.titulo)}</summary><div class="registro-conteudo">${a.descricao?`<p class="desc">${esc(a.descricao)}</p>`:''}<p class="desc">${esc(a.solucao)}</p></div></details>${quem.length?`<p class="reg-quem">${quem.map(q=>`<span>${esc(q)}</span>`).join('')}</p>`:''}</div>
       <div class="reg-tags"><span class="tag ${classeEstado(a)}">${esc(estado(a))}</span>${fds?'<span class="tag tag-fds">Fim de semana</span>':''}</div>
       <strong class="reg-dur">${a.fim?duracao(a.minutos):''}</strong><div class="registro-acao">${acoes}</div></article>`;
     if(excluindoId!==a.id)return linha;
@@ -283,12 +289,12 @@
     const soma=l=>duracao(l.reduce((s,a)=>s+Number(a.minutos),0));
     $('hTotalHoras').textContent=duracao(total);
     $('hQtdEnviar').innerHTML=`<b>${pend.length}</b> a enviar <em>${soma(pend)}</em>`;$('hQtdEnviados').innerHTML=`<b>${env.length}</b> já enviado(s) <em>${soma(env)}</em>`;
-    const dias=Array.from({length:7},()=>({sem:0,fds:0}));let fds=0,sem=0;
-    for(const a of finalizados){const m=Number(a.minutos)||0,{semana}=partesBR(a.inicio);if(ehFds(a.inicio)){dias[semana].fds+=m;fds+=m;}else{dias[semana].sem+=m;sem+=m;}}
+    // Total por dia da semana, pelo dia em que o chamado começou (sex 17h em diante em outra cor).
+    const dias=Array.from({length:7},()=>({sem:0,fds:0}));
+    for(const a of finalizados){const m=Number(a.minutos)||0,{semana}=partesBR(a.inicio);dias[semana][ehFds(a.inicio)?'fds':'sem']+=m;}
     const max=Math.max(60,...dias.map(d=>d.sem+d.fds)),nomes=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
     $('hRegua').innerHTML=dias.map((d,i)=>`<div class="regua-dia${i>=4?' regua-fim':''}"><div class="regua-barra" title="${nomes[i]}: ${duracao(d.sem+d.fds)}">${d.fds?`<i class="b-fds" style="height:${d.fds/max*100}%"></i>`:''}${d.sem?`<i class="b-sem" style="height:${d.sem/max*100}%"></i>`:''}</div><span>${nomes[i]}</span></div>`).join('')+'<div class="regua-plantao">plantão fixo</div>';
     $('hRegua').setAttribute('aria-label',`Horas por dia da semana: ${dias.map((d,i)=>`${nomes[i]} ${duracao(d.sem+d.fds)}`).join(', ')}`);
-    $('hLegenda').innerHTML=`<span class="leg-fds">Fim de semana, sex 17h a dom <b>${duracao(fds)}</b></span><span class="leg-sem">Durante a semana <b>${duracao(sem)}</b></span>`;
     // Cada e-mail ao RH é de uma pessoa: com a equipe toda na tela, o gerente escolhe quem antes.
     const variasPessoas=new Set(pend.map(a=>a.usuario_id)).size>1;
     $('hPreparar').textContent=variasPessoas?'Escolha um colaborador para enviar':ENVIO_RH_ATIVO?(pend.length?`Conferir e enviar ao RH (${pend.length})`:'Nada a enviar neste período'):'Conferir resumo';
@@ -313,8 +319,9 @@
       return `<article class="envio"><div><strong>${verEquipe()?esc(r.nome)+', ':''}${dias[0]===dias[dias.length-1]?br(dias[0]):`${br(dias[0])} a ${br(dias[dias.length-1])}`}</strong><p class="meta">${r.itens.length} atendimento(s), ${duracao(min)}. ${r.estado==='aceito'?`Enviado em ${brasil(r.aceito_em)} de ${esc(r.remetente)} para ${esc(r.destinatarios.join(', '))}.`:'Envio não confirmado.'}</p>${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<p class="err">${esc(r.ultimo_erro||'Confira os Itens Enviados no Outlook antes de tentar de novo.')}</p>`:''}</div><div class="envio-acoes">${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<button data-h-retomar="${r.id}">Tentar novamente</button>`:''}<button data-h-pdf="${r.id}">Baixar PDF</button></div></article>`;}).join(''):'<p class="meta">Nenhum envio ao RH ainda.</p>';
   }
   function atualizarEtapas(){
-    const titulo=!!$('hTitulo').value.trim(),inicio=new Date($('hInicio').value),fim=new Date($('hFim').value),pausa=Number($('hPausa').value);
-    const horarioValido=!!$('hInicio').value&&!!$('hFim').value&&Number.isFinite(inicio.getTime())&&Number.isFinite(fim.getTime())&&inicio<=new Date()&&fim<=new Date()&&fim>inicio&&Number.isInteger(pausa)&&pausa>=0&&(fim-inicio)/60000>pausa;
+    // "Dados" só fica completa com assunto, solicitante e setor.
+    const titulo=!!$('hTitulo').value.trim()&&!!$('hSolicitante').value.trim()&&!!$('hSetor').value.trim(),inicio=new Date($('hInicio').value),fim=new Date($('hFim').value);
+    const horarioValido=!!$('hInicio').value&&!!$('hFim').value&&Number.isFinite(inicio.getTime())&&Number.isFinite(fim.getTime())&&inicio<=new Date()&&fim<=new Date()&&fim>inicio;
     const completos=[titulo,titulo&&horarioValido,titulo&&horarioValido&&!!$('hSolucao').value.trim()];
     const atual=completos.findIndex(valor=>!valor);
     const botoes=[...document.querySelectorAll('.etapas button')];
@@ -323,18 +330,19 @@
     const status=atual===-1?'Todas as etapas estão completas. Revise e salve o relatório.':`Etapa atual: ${['Dados','Atendimento','Relato'][atual]}.`;
     if($('hEtapaStatus').textContent!==status)$('hEtapaStatus').textContent=status;
   }
-  function previa(){const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value),pausa=Number($('hPausa').value);$('hPrevia').innerHTML=!$('hInicio').value||!$('hFim').value?'Informe o início e o término para calcular o tempo atendido.':fim>inicio&&Number.isInteger(pausa)&&pausa>=0&&(fim-inicio)/60000>pausa?`<span class="icone-relogio" aria-hidden="true"></span>Duração do atendimento: &nbsp; <strong>${duracao((fim-inicio)/60000-pausa)}</strong>${pausa?` <small>(descontados ${pausa} min de pausas)</small>`:''}`:'Confira os horários e as pausas: o tempo atendido deve ser maior que zero.';atualizarEtapas();}
+  // Sem pausas: o atendimento conta do contato até a solução.
+  function previa(){const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value);$('hPrevia').innerHTML=!$('hInicio').value||!$('hFim').value?'Informe o início e o término para calcular o tempo atendido.':fim>inicio?`<span class="icone-relogio" aria-hidden="true"></span>Duração do atendimento: &nbsp; <strong>${duracao((fim-inicio)/60000)}</strong>`:'Confira os horários: o término deve ser depois do início.';atualizarEtapas();}
   function limparIA(){aiGeracao++;aiBusy=false;$('hMelhorarIA').disabled=false;$('hMelhorarIA').textContent='Melhorar texto';$('hIASugestao').classList.add('hide');$('hTextoIA').value='';aiMsg('');}
-  function limpar(){editing=null;editandoOutro=null;$('horasForm').reset();$('hSetor').value='';$('hPausa').value='0';$('horasFormTitulo').textContent='Registrar relatório';$('horasTitulo').textContent='Novo relatório de atendimento';$('hSalvar').textContent='Salvar relatório';$('hCancelar').textContent='Limpar formulário';$('hErro').textContent='';limparIA();previa();}
-  function editar(a){const outro=a.usuario_id!==usuarioAtual?a:null;limpar();editing=a.id;editandoOutro=outro;$('horasFormTitulo').textContent='Editar relatório';$('horasTitulo').textContent=outro?`Editar relatório de ${nomeDe(a.usuario_id)}`:'Editar relatório de atendimento';$('hSalvar').textContent='Salvar alterações';$('hCancelar').textContent='Cancelar edição';for(const [id,key]of[['hTitulo','titulo'],['hSetor','setor'],['hSolucao','solucao']])$(id).value=a[key]||'';$('hInicio').value=local(a.inicio);$('hFim').value=a.fim?local(a.fim):'';$('hPausa').value=a.pausa_minutos||0;previa();$('hTitulo').focus();}
+  function limpar(){editing=null;editandoOutro=null;$('horasForm').reset();$('hSolicitante').value='';$('hSetor').value='';$('horasFormTitulo').textContent='Registrar relatório';$('horasTitulo').textContent='Novo relatório de atendimento';$('hSalvar').textContent='Salvar relatório';$('hCancelar').textContent='Limpar formulário';$('hErro').textContent='';limparIA();previa();}
+  function editar(a){const outro=a.usuario_id!==usuarioAtual?a:null;limpar();editing=a.id;editandoOutro=outro;$('horasFormTitulo').textContent='Editar relatório';$('horasTitulo').textContent=outro?`Editar relatório de ${nomeDe(a.usuario_id)}`:'Editar relatório de atendimento';$('hSalvar').textContent='Salvar alterações';$('hCancelar').textContent='Cancelar edição';for(const [id,key]of[['hTitulo','titulo'],['hSolicitante','solicitante'],['hSetor','setor'],['hSolucao','solucao']])$(id).value=a[key]||'';$('hInicio').value=local(a.inicio);$('hFim').value=a.fim?local(a.fim):'';previa();$('hTitulo').focus();}
   $('hCancelar').onclick=()=>{limpar();$('hTitulo').focus();};$('horasAtualizar').onclick=()=>carregarHoras();$('hVerTodos').onclick=()=>{mostrarTodos=!mostrarTodos;render();$('hRegistrosTitulo').focus();};
   document.querySelectorAll('[data-foco]').forEach(b=>b.onclick=()=>$(b.dataset.foco).focus());
   document.querySelectorAll('[data-format]').forEach(b=>b.onclick=()=>{const campo=$('hSolucao'),inicio=campo.selectionStart,fim=campo.selectionEnd,selecionado=campo.value.slice(inicio,fim),tipo=b.dataset.format;
     const antes={bold:'**',italic:'*',underline:'<u>',bullet:'- ',number:'1. ',link:'['}[tipo],depois={bold:'**',italic:'*',underline:'</u>',bullet:'',number:'',link:'](https://)'}[tipo];
     const novo=antes+(selecionado||'texto')+depois;if(campo.value.length-(fim-inicio)+novo.length>5000)return aiMsg('O relato atingiu o limite de 5.000 caracteres.',true);
     campo.setRangeText(novo,inicio,fim,'select');campo.focus();campo.dispatchEvent(new Event('input',{bubbles:true}));});
-  for(const id of ['hInicio','hFim','hPausa'])$(id).addEventListener('input',previa);
-  for(const id of ['hTitulo','hSolucao'])$(id).addEventListener('input',atualizarEtapas);
+  for(const id of ['hInicio','hFim'])$(id).addEventListener('input',previa);
+  for(const id of ['hTitulo','hSolicitante','hSetor','hSolucao'])$(id).addEventListener('input',atualizarEtapas);
   atualizarEtapas();
   for(const id of ['hDe','hAte'])$(id).addEventListener('input',()=>{periodoAtivo='datas';render();});
   $('hFiltros').onclick=e=>{const p=e.target.closest('[data-periodo]'),s=e.target.closest('[data-situacao]');
@@ -355,12 +363,14 @@
     finally{busy=false;if(ready)render();}
   };
   $('horasForm').onsubmit=async e=>{
-    e.preventDefault();if(busy)return;const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value),pausa=Number($('hPausa').value),titulo=$('hTitulo').value.trim(),solucao=$('hSolucao').value.trim();
+    e.preventDefault();if(busy)return;const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value),titulo=$('hTitulo').value.trim(),solicitante=$('hSolicitante').value.trim(),setor=$('hSetor').value.trim(),solucao=$('hSolucao').value.trim();
     const erro=s=>{$('hErro').textContent=s;};if(!titulo||!solucao)return erro('Preencha o assunto e o relato do serviço realizado.');
+    if(!solicitante||!setor){erro('Preencha quem pediu o atendimento (solicitante) e o setor.');$(!solicitante?'hSolicitante':'hSetor').focus();return;}
     if(!Number.isFinite(inicio.getTime())||!Number.isFinite(fim.getTime()))return erro('Informe início e término válidos.');
     if(inicio>new Date()||fim>new Date())return erro('Os horários não podem estar no futuro.');
-    if(!Number.isInteger(pausa)||pausa<0||(fim-inicio)/60000<=pausa)return erro('O término deve ser posterior ao início e as pausas devem ser menores que o intervalo.');
-    const atual=registros.find(a=>a.id===editing)||(editandoOutro?.id===editing?editandoOutro:undefined),deOutro=!!editandoOutro,donoNome=deOutro?nomeDe(editandoOutro.usuario_id):'',payload={titulo,solucao,inicio:inicio.toISOString(),fim:fim.toISOString(),pausa_minutos:pausa,solicitante:atual?.solicitante||'',setor:$('hSetor').value.trim(),descricao:atual?.descricao||''};
+    if(fim<=inicio)return erro('O término deve ser posterior ao início.');
+    // Sem pausa_minutos no payload: o banco não aceita mais essa coluna no UPDATE (default 0 no INSERT).
+    const atual=registros.find(a=>a.id===editing)||(editandoOutro?.id===editing?editandoOutro:undefined),deOutro=!!editandoOutro,donoNome=deOutro?nomeDe(editandoOutro.usuario_id):'',payload={titulo,solucao,inicio:inicio.toISOString(),fim:fim.toISOString(),solicitante,setor,descricao:atual?.descricao||''};
     busy=true;$('hSalvar').disabled=true;$('hCancelar').disabled=true;limparIA();
     try{const query=editing?sb.from('atendimentos').update(payload).eq('id',editing).is('relatorio_id',null).eq('atualizado_em',atual?.atualizado_em):sb.from('atendimentos').insert(payload);const {data,error}=await query.select('id');if(error)throw error;if(data.length!==1)throw new Error('O registro mudou. Atualize a lista e confira antes de editar.');limpar();msg(deOutro?`Relatório de ${donoNome} salvo. As horas foram atualizadas.`:'Relatório salvo. Suas horas foram atualizadas.');await carregarHoras();$('hTitulo').focus();}
     catch(e){erro(erroTexto(e));}finally{busy=false;$('hSalvar').disabled=false;$('hCancelar').disabled=false;if(ready)render();}
@@ -374,13 +384,13 @@
   };
   $('hUsarIA').onclick=()=>{if($('hSolucao').value.trim()!==aiOriginal)return aiMsg('Seu texto mudou desde a solicitação. Peça uma nova revisão para não substituir suas alterações.',true);const sugestao=$('hTextoIA').value.trim();if(!sugestao)return aiMsg('A sugestão está vazia. Ajuste o texto ou mantenha o original.',true);$('hSolucao').value=sugestao;atualizarEtapas();$('hIASugestao').classList.add('hide');aiMsg('Sugestão aplicada ao formulário. Confira e salve o relatório quando estiver pronto.');$('hSolucao').focus();};
   $('hDescartarIA').onclick=()=>{limparIA();$('hSolucao').focus();};
-  function tabela(itens){return `<table><thead><tr><th>Início (Brasília)</th><th>Término (Brasília)</th><th>Pausas</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Relato</th></tr></thead><tbody>${itens.map(a=>`<tr><td>${brasil(a.inicio)}</td><td>${brasil(a.fim)}</td><td>${a.pausa_minutos} min</td><td>${duracao(a.minutos)}</td><td>${esc([a.solicitante,a.setor].filter(Boolean).join(' / '))}</td><td>${esc(a.titulo)}\n${esc(a.descricao)}${a.descricao?'\n':''}${esc(a.solucao)}</td></tr>`).join('')}</tbody></table>`;}
+  function tabela(itens){return `<table><thead><tr><th>Início (Brasília)</th><th>Término (Brasília)</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Relato</th></tr></thead><tbody>${itens.map(a=>`<tr><td>${brasil(a.inicio)}</td><td>${brasil(a.fim)}</td><td>${duracao(a.minutos)}</td><td>${esc([a.solicitante,a.setor].filter(Boolean).join(' / ')||'—')}</td><td>${esc(a.titulo)}\n${esc(a.descricao)}${a.descricao?'\n':''}${esc(a.solucao)}</td></tr>`).join('')}</tbody></table>`;}
   // O envio junta tudo que ainda não foi enviado no período e colaborador do filtro.
   $('hPreparar').onclick=async()=>{prontos=filtrados(false).filter(a=>a.fim&&!a.relatorio_id);if(!prontos.length)return msg('Nada a enviar neste período: todos os atendimentos já foram enviados.',true);if(prontos.length>200)return msg('Selecione um período menor: cada resumo aceita até 200 registros.',true);
     // Cada envio ao RH é de um colaborador só; o gerente escolhe quem no filtro.
     if(new Set(prontos.map(a=>a.usuario_id)).size>1)return msg('Escolha um colaborador no filtro para conferir o resumo dele: cada envio ao RH é de uma pessoa.',true);
-    alvoEnvio=prontos[0].usuario_id;versoes=Object.fromEntries(prontos.map(a=>[a.id,a.atualizado_em]));const fdsMin=prontos.filter(a=>ehFds(a.inicio)).reduce((s,a)=>s+Number(a.minutos),0),totalMin=prontos.reduce((s,a)=>s+Number(a.minutos),0);
-    $('hPreviewResumo').innerHTML=`<strong>${esc(nomeDe(alvoEnvio))}</strong>: ${prontos.length} atendimento(s), ${duracao(totalMin)} no total${fdsMin&&fdsMin<totalMin?` (fim de semana ${duracao(fdsMin)}, durante a semana ${duracao(totalMin-fdsMin)})`:fdsMin?', todos no plantão de fim de semana':''}. Vão juntos em um e-mail, com o PDF anexado.`;$('hPreviewTabela').innerHTML=tabela(prontos);$('horasPreview').classList.remove('hide');$('hPreviewTitulo').focus();$('hEnviar').disabled=true;
+    alvoEnvio=prontos[0].usuario_id;versoes=Object.fromEntries(prontos.map(a=>[a.id,a.atualizado_em]));const totalMin=prontos.reduce((s,a)=>s+Number(a.minutos),0);
+    $('hPreviewResumo').innerHTML=`<strong>${esc(nomeDe(alvoEnvio))}</strong>: ${prontos.length} atendimento(s), ${duracao(totalMin)} no total. Vão juntos em um e-mail, com o PDF anexado.`;$('hPreviewTabela').innerHTML=tabela(prontos);$('horasPreview').classList.remove('hide');$('hPreviewTitulo').focus();$('hEnviar').disabled=true;
     if(!ENVIO_RH_ATIVO){$('hDestinatarios').textContent='Prévia para validação. O envio de e-mail está desativado.';return;}
     $('hDestinatarios').textContent='Consultando destinatários…';try{const data=await invoke('enviar-relatorio-rh',{acao:'config'});$('hDestinatarios').textContent=`De: ${data.remetente} (seu e-mail) · Para: ${data.destinatarios.join(', ')}`;$('hEnviar').disabled=false;}catch(e){$('hDestinatarios').textContent=e.message;}
   };
@@ -399,5 +409,5 @@
     if(new Set(itens.map(a=>a.usuario_id)).size>1)return msg('Escolha um colaborador no filtro para baixar o PDF dele.',true);
     baixarPdf({ids:itens.map(a=>a.id),usuario:itens[0].usuario_id},$('hPdf'));};
   $('hHistorico').onclick=e=>{const p=e.target.closest('[data-h-pdf]');if(p)return baixarPdf({relatorio_id:p.dataset.hPdf},p);const b=e.target.closest('[data-h-retomar]');if(b)enviar({relatorio_id:b.dataset.hRetomar},b);};
-  $('hCsv').onclick=()=>{const itens=filtrados().filter(a=>a.fim),cel=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"',rows=[['Colaborador','Início (Brasília)','Término (Brasília)','Pausas (min)','Tempo atendido (min)','Assunto','Solicitante','Setor','Contexto anterior','Relato','Envio ao RH']];itens.forEach(a=>rows.push([nomeDe(a.usuario_id),brasil(a.inicio),brasil(a.fim),a.pausa_minutos,Number(a.minutos).toFixed(2),a.titulo,a.solicitante,a.setor,a.descricao,a.solucao,estado(a)]));const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(cel).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='relatorios-ti.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  $('hCsv').onclick=()=>{const itens=filtrados().filter(a=>a.fim),cel=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"',rows=[['Colaborador','Início (Brasília)','Término (Brasília)','Tempo atendido (min)','Assunto','Solicitante','Setor','Contexto anterior','Relato','Envio ao RH']];itens.forEach(a=>rows.push([nomeDe(a.usuario_id),brasil(a.inicio),brasil(a.fim),Number(a.minutos).toFixed(2),a.titulo,a.solicitante,a.setor,a.descricao,a.solucao,estado(a)]));const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(cel).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='relatorios-ti.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 })();
