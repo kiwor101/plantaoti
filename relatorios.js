@@ -124,10 +124,10 @@
         <form id="horasForm">
           <h2 id="horasTitulo">Novo relatório de atendimento</h2><h3 id="horasFormTitulo" class="sr-only">Registrar relatório</h3>
           <div class="etapas" aria-label="Progresso do formulário"><button type="button" data-foco="hTitulo"><span aria-hidden="true">1</span>Dados</button><i aria-hidden="true"></i><button type="button" data-foco="hInicio"><span aria-hidden="true">2</span>Atendimento</button><i aria-hidden="true"></i><button type="button" data-foco="hSolucao"><span aria-hidden="true">3</span>Relato</button></div><span id="hEtapaStatus" class="sr-only" role="status"></span>
-          <label for="hTitulo">Assunto *</label><input id="hTitulo" maxlength="120" placeholder="Descreva o assunto do atendimento..." required>
+          <label for="hTitulo">Assunto *</label><input id="hTitulo" maxlength="120" required>
           <div class="row">
-            <div><label for="hSolicitante">Solicitante *</label><input id="hSolicitante" maxlength="120" placeholder="Ex.: Maria - enfermeira" autocomplete="off" required></div>
-            <div><label for="hSetor">Setor *</label><input id="hSetor" maxlength="120" placeholder="Ex.: UTI adulto" autocomplete="off" required></div>
+            <div><label for="hSolicitante">Solicitante *</label><input id="hSolicitante" maxlength="120" autocomplete="off" required></div>
+            <div><label for="hSetor">Setor *</label><input id="hSetor" maxlength="120" autocomplete="off" required></div>
           </div>
           <div class="row">
             <div><label for="hInicio">Início *</label><input id="hInicio" type="datetime-local" required></div>
@@ -135,7 +135,7 @@
           </div>
           <div id="hPrevia" class="horas-total" aria-live="polite">Informe o início e o término para calcular o tempo atendido.</div>
           <label for="hSolucao">Relato do serviço realizado *</label>
-          <div class="editor-relato"><div class="editor-barra"><div class="editor-ferramentas"><button type="button" data-format="bold" title="Negrito" aria-label="Negrito"><b>B</b></button><button type="button" data-format="italic" title="Itálico" aria-label="Itálico"><em>I</em></button><button type="button" data-format="underline" title="Sublinhado" aria-label="Sublinhado"><u>U</u></button><span class="separador"></span><button type="button" data-format="bullet" title="Lista" aria-label="Lista">≡</button><button type="button" data-format="number" title="Lista numerada" aria-label="Lista numerada">☷</button><span class="separador"></span><button type="button" data-format="link" title="Inserir link" aria-label="Inserir link">↗</button></div><button id="hMelhorarIA" type="button" title="Envia apenas o texto do relato à IA; você confere a sugestão antes de usar">✧ Melhorar texto</button></div><textarea id="hSolucao" maxlength="5000" placeholder="Descreva aqui o serviço realizado, incluindo ações, resultados e outras informações relevantes..." required></textarea></div>
+          <div class="editor-relato"><div class="editor-barra"><div class="editor-ferramentas"><button type="button" data-format="bold" title="Negrito" aria-label="Negrito"><b>B</b></button><button type="button" data-format="italic" title="Itálico" aria-label="Itálico"><em>I</em></button><button type="button" data-format="underline" title="Sublinhado" aria-label="Sublinhado"><u>U</u></button><span class="separador"></span><button type="button" data-format="bullet" title="Lista" aria-label="Lista">≡</button><button type="button" data-format="number" title="Lista numerada" aria-label="Lista numerada">☷</button><span class="separador"></span><button type="button" data-format="link" title="Inserir link" aria-label="Inserir link">↗</button></div><button id="hMelhorarIA" type="button" title="Envia apenas o texto do relato à IA; você confere a sugestão antes de usar">✧ Melhorar texto</button></div><textarea id="hSolucao" maxlength="5000" required></textarea></div>
           <p class="meta horas-nota-ia">A revisão envia somente este texto à OpenAI. Confira a sugestão antes de usar.</p>
           <p id="hIAMensagem" role="status" aria-live="polite"></p>
           <section id="hIASugestao" class="hide" aria-labelledby="hIATitulo">
