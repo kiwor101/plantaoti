@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://iyrlbfrsrolwhybumler.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_DzO4wyz9PQsy8enPNF00tg_RHlVStkh'; // chave publicável — protegida pelas políticas RLS
 // Habilitar somente após publicar e configurar enviar-relatorio-rh.
-const ENVIO_RH_ATIVO = false;
+const ENVIO_RH_ATIVO = true;
 const $ = id => document.getElementById(id);
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -29,6 +29,27 @@ function mostrarLogin() {
   $('lembrarAcesso').checked = rememberAccess;
 }
 
+// Token Microsoft (para enviar o relatório ao RH pelo Microsoft 365).
+// Só vem logo após o login e vale ~1 h; guardamos na aba com folga de validade.
+const msKey = 'plantao-ti-ms-token';
+const MS_SCOPES = 'openid email profile Mail.Send';
+function guardarTokenMicrosoft(session) {
+  if (session?.provider_token) sessionStorage.setItem(msKey, JSON.stringify({ t: session.provider_token, exp: Date.now() + 50 * 60000 }));
+}
+function tokenMicrosoft() {
+  try { const v = JSON.parse(sessionStorage.getItem(msKey) || 'null'); return v && v.exp > Date.now() ? v.t : null; } catch { return null; }
+}
+function esquecerTokenMicrosoft() { sessionStorage.removeItem(msKey); }
+// Pede um token novo sem mostrar a escolha de conta (a Microsoft já conhece o usuário).
+async function confirmarMicrosoft() {
+  esquecerTokenMicrosoft();
+  const {error} = await sb.auth.signInWithOAuth({
+    provider: 'azure',
+    options: { scopes: MS_SCOPES, redirectTo: location.origin + location.pathname, queryParams: { login_hint: user?.email || '' } }
+  });
+  if (error) throw new Error('Não foi possível abrir a confirmação da conta Microsoft. Tente novamente.');
+}
+
 async function entrou(u) {
   user = u;
   const {data,error} = await sb.from('perfis').select('*').eq('id',u.id).single();
@@ -49,11 +70,13 @@ async function iniciar() {
   // Erro devolvido pelo login Microsoft (ex.: e-mail fora da lista de liberados).
   const retorno = new URLSearchParams(location.search + '&' + location.hash.slice(1));
   const erroRetorno = retorno.get('error_description');
+  // Só um retorno recente do login traz um token Microsoft novo.
+  const voltouDoLogin = retorno.has('access_token') || retorno.has('code');
   if (erroRetorno) history.replaceState(null, '', location.pathname);
   try {
     const {data,error} = await sb.auth.getSession();
     if (error) throw error;
-    if (data.session) { await entrou(data.session.user); return; }
+    if (data.session) { if (voltouDoLogin) guardarTokenMicrosoft(data.session); await entrou(data.session.user); return; }
     mostrarLogin();
     if (erroRetorno) $('erroLogin').textContent = /saving new user|não liberado/i.test(erroRetorno)
       ? 'Seu e-mail não está liberado para o Plantão TI. Fale com o gerente da TI.'
@@ -74,7 +97,7 @@ $('telaLogin').onsubmit = async e => {
   const {error} = await sb.auth.signInWithOAuth({
     provider: 'azure',
     options: {
-      scopes: 'openid email profile',
+      scopes: MS_SCOPES,
       redirectTo: location.origin + location.pathname,
       queryParams: { prompt: 'select_account' } // sempre mostra a escolha de conta Microsoft
     }
@@ -86,6 +109,7 @@ $('telaLogin').onsubmit = async e => {
 };
 
 $('btnSair').onclick = async () => {
+  esquecerTokenMicrosoft();
   const {error} = await sb.auth.signOut();
   if (error) { alert('Não foi possível sair. Tente novamente.'); return; }
   location.href = location.pathname;
