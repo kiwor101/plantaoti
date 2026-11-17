@@ -24,59 +24,76 @@ type Item = {titulo:string;inicio:string;fim:string;minutos:number;solicitante:s
 // Código que o navegador usa para pedir uma nova confirmação da conta Microsoft.
 const TOKEN_MS = 'token_microsoft';
 
-// Escala da TI: de segunda a quinta à noite atende quem pegar o chamado; de
-// sexta 17:00 até domingo 23:59 é o plantão fixo de fim de semana. O tipo vale
-// pela hora de início (Brasília). O envio junta o período que a pessoa escolher.
+// Cada atendimento conta no dia em que começou (Brasília); a meia-noite não é corte.
 const DIA = 86400000;
-const partes = (iso: string) => {const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:fuso,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(new Date(iso)).map(x=>[x.type,x.value]));return {dia:`${p.year}-${p.month}-${p.day}`,hora:Number(p.hour),semana:p.weekday};};
-const fimDeSemana = (iso: string) => {const {semana,hora}=partes(iso);return semana==='Sat'||semana==='Sun'||(semana==='Fri'&&hora>=17);};
-// Sexta do fim de semana (para saber se tudo cabe em um único plantão de fim de semana).
-const sextaDe = (iso: string) => {const {dia,semana}=partes(iso);const d=new Date(dia+'T00:00:00Z');return d.getTime()-({Fri:0,Sat:1,Sun:2} as Record<string,number>)[semana]*DIA;};
-const ddmm = (d: Date) => `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+const partes = (iso: string) => {const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:fuso,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(iso)).map(x=>[x.type,x.value]));return {dia:`${p.year}-${p.month}-${p.day}`};};
 function periodo(itens: Item[]){
   const ord=[...itens].sort((x,y)=>x.inicio.localeCompare(y.inicio));
   const primeiro=partes(ord[0].inicio).dia, ultimo=partes(ord[ord.length-1].inicio).dia;
-  if(ord.every(a=>fimDeSemana(a.inicio))&&new Set(ord.map(a=>sextaDe(a.inicio))).size===1){
-    const s=new Date(sextaDe(ord[0].inicio)),d=new Date(s.getTime()+2*DIA);
-    return {texto:`Plantão de fim de semana de ${ddmm(s)} a ${ddmm(d)}/${d.getUTCFullYear()}`,arquivo:s.toISOString().slice(0,10)};
-  }
-  if(primeiro===ultimo)return {texto:`Atendimentos de ${soData(ord[0].inicio)}`,arquivo:primeiro};
-  return {texto:`Período de ${soData(ord[0].inicio)} a ${soData(ord[ord.length-1].inicio)}`,arquivo:`${primeiro}_a_${ultimo}`};
+  if(primeiro===ultimo)return {texto:soData(ord[0].inicio),arquivo:primeiro};
+  return {texto:`${soData(ord[0].inicio)} a ${soData(ord[ord.length-1].inicio)}`,arquivo:`${primeiro}_a_${ultimo}`};
 }
-// O chamado conta no dia em que começou; se terminou em outro dia, o término leva "(+1 dia)".
+// Se terminou em outro dia, o término leva "(+1 dia)".
 const diasDepois = (a: Item) => Math.round((Date.parse(partes(a.fim).dia)-Date.parse(partes(a.inicio).dia))/DIA);
 const terminoPdf = (a: Item) => {const n=diasDepois(a);return n>0?`${soHora(a.fim)} (+${n} dia${n>1?'s':''})`:soHora(a.fim);};
-const quemPediu = (a: Item, sep: string) => `${a.solicitante?.trim()||'—'}${sep}${a.setor?.trim()||'—'}`;
+const ou = (s?: string) => s?.trim()||'—';
 const nomeArquivo = (nome: string, itens: Item[]) => `Plantao-TI_${nome.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'')}_${periodo(itens).arquivo}.pdf`;
+
+const INSTITUICAO = 'Irmandade da Santa Casa de Andradina';
+type Cor = [number,number,number];
+const AZUL: Cor=[23,105,223], TINTA: Cor=[17,26,51], CINZA: Cor=[103,117,141], LINHA: Cor=[220,227,236], SUAVE: Cor=[234,242,255], BRANCO: Cor=[255,255,255];
 
 function gerarPdf(nome: string, itens: Item[], referencia: string, enviadoPor?: string){
   const ord=[...itens].sort((x,y)=>x.inicio.localeCompare(y.inicio));
   const total=ord.reduce((s,a)=>s+Number(a.minutos),0), per=periodo(ord);
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  const L=doc.internal.pageSize.getWidth(), azul:[number,number,number]=[19,95,214];
-  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(20,24,31);
-  doc.text('Plantão TI · Atendimentos fora do expediente',14,16);
-  doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(70,76,88);
-  doc.text(`Colaborador: ${nome}    ${per.texto}`,14,23);
-  doc.text(`${ord.length} atendimento(s)    Total: ${tempo(total)} (horário de Brasília)`,14,28.5);
-  if(enviadoPor)doc.text(`Enviado por ${enviadoPor} (gerente da TI)`,14,34);
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight(), M=14;
+
+  // Identidade: marca do Plantão TI (desenhada em vetor) + nome da instituição.
+  doc.setFillColor(...AZUL);doc.roundedRect(M,10,13,13,2.5,2.5,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...BRANCO);doc.text('TI',M+6.5,16.5,{align:'center',baseline:'middle'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...CINZA);doc.text(`${INSTITUICAO}  ·  Plantão TI`,M+17,14.2);
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...TINTA);doc.text('Relatório de atendimentos fora do expediente',M+17,21.2);
+  doc.setDrawColor(...LINHA);doc.setLineWidth(0.3);doc.line(M,27,W-M,27);
+
+  // Resumo em blocos rotulados; o tempo total em destaque.
+  const caixas: [string,string][]=[['Colaborador',nome],['Período',per.texto],['Atendimentos',String(ord.length)],['Tempo total',tempo(total)]];
+  const gap=4, bw=(W-2*M-gap*3)/4, by=31, bh=18;
+  caixas.forEach(([rotulo,valor],i)=>{const x=M+i*(bw+gap),destaque=i===3;
+    doc.setFillColor(...(destaque?AZUL:SUAVE));doc.roundedRect(x,by,bw,bh,2,2,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...(destaque?BRANCO:CINZA));doc.text(rotulo,x+4,by+5.5);
+    doc.setFont('helvetica','bold');doc.setFontSize(destaque?17:12.5);doc.setTextColor(...(destaque?BRANCO:TINTA));
+    doc.text(doc.splitTextToSize(valor,bw-8)[0],x+4,by+14);});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...CINZA);
+  doc.text(`Horário de Brasília. Cada atendimento conta no dia em que começou.${enviadoPor?`   Enviado por ${enviadoPor} (gerente da TI).`:''}`,M,by+bh+5);
+
+  // Atividade: assunto em negrito e o serviço realizado embaixo, em peso normal.
+  const larguras=[22,14,25,22,35,29], atvW=W-2*M-larguras.reduce((s,n)=>s+n,0), pad=2, fs=8.5, lh=fs*1.15*25.4/72;
+  const atividades=ord.map(a=>{doc.setFontSize(fs);doc.setFont('helvetica','bold');const t=doc.splitTextToSize(a.titulo,atvW-2*pad);
+    doc.setFont('helvetica','normal');const r=doc.splitTextToSize([a.descricao?.trim(),`Serviço realizado: ${a.solucao}`].filter(Boolean).join('\n'),atvW-2*pad);return {t,r};});
   autoTable(doc,{
-    startY:enviadoPor?39:33,
-    head:[['Data','Início','Término','Tempo','Solicitante / setor','Atividade']],
-    body:ord.map(a=>[`${soData(a.inicio)}\n${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}`,soHora(a.inicio),terminoPdf(a),tempo(Number(a.minutos)),quemPediu(a,'\n'),
-      `${a.titulo}${a.descricao?'\n'+a.descricao:''}\nServiço realizado: ${a.solucao}`]),
-    foot:[['','','Total',tempo(total),'','']],
+    startY:by+bh+8,
+    head:[['Data','Início','Término','Tempo','Solicitante','Setor','Atividade']],
+    body:ord.map((a,i)=>[soData(a.inicio),soHora(a.inicio),terminoPdf(a),tempo(Number(a.minutos)),ou(a.solicitante),ou(a.setor),[...atividades[i].t,...atividades[i].r].join('\n')]),
+    foot:[[{content:'Total',colSpan:3,styles:{halign:'right'}},tempo(total),{content:`${ord.length} atendimento(s)`,colSpan:3,styles:{fontStyle:'normal',textColor:CINZA}}]],
     theme:'grid',
-    styles:{font:'helvetica',fontSize:8.5,cellPadding:2,valign:'top',textColor:[30,34,42],lineColor:[214,220,230]},
-    headStyles:{fillColor:azul,textColor:255,fontStyle:'bold'},
-    footStyles:{fillColor:[234,241,253],textColor:[20,24,31],fontStyle:'bold'},
-    showFoot:'lastPage',
-    columnStyles:{0:{cellWidth:27},1:{cellWidth:15},2:{cellWidth:27},3:{cellWidth:22},4:{cellWidth:48}},
-    margin:{left:14,right:14,bottom:16},
-    didDrawPage:()=>{doc.setFontSize(8);doc.setTextColor(120,126,138);
-      doc.text(`Referência: ${referencia} · Gerado em ${data(new Date().toISOString())}`,14,doc.internal.pageSize.getHeight()-8);
-      doc.text(`Página ${doc.getCurrentPageInfo().pageNumber}`,L-14,doc.internal.pageSize.getHeight()-8,{align:'right'});},
+    styles:{font:'helvetica',fontSize:fs,cellPadding:pad,valign:'top',textColor:[30,34,42],lineColor:LINHA,lineWidth:0.2},
+    headStyles:{fillColor:AZUL,textColor:255,fontStyle:'bold'},
+    footStyles:{fillColor:SUAVE,textColor:TINTA,fontStyle:'bold'},
+    showFoot:'lastPage',rowPageBreak:'avoid',
+    columnStyles:{...Object.fromEntries(larguras.map((w,i)=>[i,{cellWidth:w}])),6:{cellWidth:atvW}},
+    margin:{top:14,left:M,right:M,bottom:16},
+    willDrawCell:d=>{if(d.section==='body'&&d.column.index===6)d.cell.text=[];},
+    didDrawCell:d=>{const atv=atividades[d.row.index];if(d.section!=='body'||d.column.index!==6||!atv)return;const {t,r}=atv,x=d.cell.x+pad,y=d.cell.y+pad;
+      doc.setFontSize(fs);doc.setTextColor(30,34,42);
+      doc.setFont('helvetica','bold');doc.text(t,x,y,{baseline:'top',lineHeightFactor:1.15});
+      doc.setFont('helvetica','normal');doc.text(r,x,y+t.length*lh,{baseline:'top',lineHeightFactor:1.15});},
   });
+  // Rodapé depois da tabela, quando o total de páginas já é conhecido.
+  const paginas=doc.getNumberOfPages(),gerado=data(new Date().toISOString());
+  for(let p=1;p<=paginas;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...CINZA);
+    doc.text(`Referência: ${referencia}  ·  Gerado em ${gerado}`,M,H-8);
+    doc.text(`Página ${p} de ${paginas}`,W-M,H-8,{align:'right'});}
   const bytes=new Uint8Array(doc.output('arraybuffer'));let bin='';
   for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
   return btoa(bin);
@@ -153,9 +170,13 @@ Deno.serve(async req => {
     const itens=[...relatorio.itens as Item[]].sort((x,y)=>x.inicio.localeCompare(y.inicio)), total=itens.reduce((s,a)=>s+Number(a.minutos),0);
     const porOutro=relatorio.usuario_id!==auth.user.id, per=periodo(itens);
     const assunto=`Plantão TI · ${relatorio.nome} · ${per.texto}`;
-    const linhas=itens.map(a=>`<tr><td>${esc(data(a.inicio))}<br><small>${fimDeSemana(a.inicio)?'Fim de semana':'Semana'}</small></td><td>${esc(data(a.fim))}</td><td>${tempo(Number(a.minutos))}</td><td>${esc(quemPediu(a,'\n')).replace('\n','<br>')}</td><td><strong>${esc(a.titulo)}</strong><br>${esc(a.descricao)}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`).join('');
-    const enviadoPor=porOutro?`<p>Enviado por <strong>${esc(eu.nome)}</strong> (gerente da TI).</p>`:'';
-    const html=`<html lang="pt-BR"><body><h1>Atendimentos fora do expediente</h1><p>Olá, equipe de RH.</p><p>Segue o relatório de <strong>${esc(relatorio.nome)}</strong> (${esc(per.texto)}), com ${itens.length} atendimento(s) e ${tempo(total)} de trabalho efetivo. O mesmo relatório segue em PDF, anexo.</p>${enviadoPor}<p>Horários de Brasília. Durações exibidas arredondadas ao minuto; o total é calculado antes do arredondamento.</p><table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Início</th><th>Término</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Atividade</th></tr></thead><tbody>${linhas}</tbody></table><p>Referência: ${esc(relatorio.id)}</p></body></html>`;
+    // E-mail: controle interno da TI. Resumo rotulado no topo, depois a tabela (o PDF vai anexo).
+    const td='style="border:1px solid #dce3ec;padding:6px 8px;vertical-align:top"', th='style="border:1px solid #1769df;padding:6px 8px;background:#1769df;color:#fff;text-align:left"';
+    const tdn=td.replace('vertical-align:top','vertical-align:top;white-space:nowrap');
+    const linhas=itens.map(a=>`<tr><td ${tdn}>${esc(data(a.inicio))}</td><td ${tdn}>${esc(terminoPdf(a))}</td><td ${tdn}>${tempo(Number(a.minutos))}</td><td ${td}>${esc(ou(a.solicitante))}</td><td ${td}>${esc(ou(a.setor))}</td><td ${td}><strong>${esc(a.titulo)}</strong>${a.descricao?.trim()?`<br>${esc(a.descricao)}`:''}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`).join('');
+    const resumo=[['Colaborador',esc(relatorio.nome)],['Período',esc(per.texto)],['Atendimentos',String(itens.length)],['Tempo total',`<strong>${tempo(total)}</strong>`],...(porOutro?[['Enviado por',`${esc(eu.nome)} (gerente da TI)`]]:[])]
+      .map(([k,v])=>`<tr><td style="padding:2px 16px 2px 0;color:#67758d">${k}</td><td style="padding:2px 0">${v}</td></tr>`).join('');
+    const html=`<html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#111a33"><p style="color:#67758d;margin:0">${INSTITUICAO} · Plantão TI</p><h2 style="margin:4px 0 14px">Relatório de atendimentos fora do expediente</h2><p>Olá,</p><p>Segue o registro dos atendimentos feitos pela equipe de TI fora do horário de expediente, para controle interno. O mesmo relatório vai em PDF, anexo.</p><table style="border-collapse:collapse;margin:0 0 16px">${resumo}</table><table style="border-collapse:collapse;font-size:13px"><thead><tr><th ${th}>Início</th><th ${th}>Término</th><th ${th}>Tempo</th><th ${th}>Solicitante</th><th ${th}>Setor</th><th ${th}>Atividade</th></tr></thead><tbody>${linhas}</tbody></table><p style="color:#67758d;font-size:12px">Horário de Brasília. Cada atendimento conta no dia em que começou. Referência: ${esc(relatorio.id)}</p></body></html>`;
     const anexo={'@odata.type':'#microsoft.graph.fileAttachment',name:nomeArquivo(relatorio.nome,itens),contentType:'application/pdf',
       contentBytes:gerarPdf(relatorio.nome,itens,relatorio.id,porOutro?eu.nome:undefined)};
 
