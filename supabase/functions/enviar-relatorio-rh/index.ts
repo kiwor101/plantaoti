@@ -111,6 +111,64 @@ function gerarPdf(nome: string, itens: Item[], referencia: string, enviadoPor?: 
   return btoa(bin);
 }
 
+// Link de confirmação de recebimento pelo RH. token = base64url(HMAC-SHA256(CONFIRMACAO_SECRET, relatorio_id)).
+// Nada fica guardado no banco: a função confirmar-recebimento recalcula e compara.
+// (O mesmo cálculo está em confirmar-recebimento/index.ts; mantenha os dois iguais.)
+const SITE = 'https://plantaoti.santacasaandradina.org';
+const b64url = (b: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function tokenConfirmacao(segredo: string, relatorioId: string){
+  const chave=await crypto.subtle.importKey('raw',new TextEncoder().encode(segredo),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return b64url(await crypto.subtle.sign('HMAC',chave,new TextEncoder().encode(relatorioId)));
+}
+async function linkConfirmacao(relatorioId: string){
+  const segredo=Deno.env.get('CONFIRMACAO_SECRET')||'';
+  if(segredo.length<32){console.warn('CONFIRMACAO_SECRET ausente ou curto: e-mail sai sem o link de confirmação.');return null;}
+  return `${SITE}/confirmar.html?r=${relatorioId}&t=${await tokenConfirmacao(segredo,relatorioId)}`;
+}
+
+type Relatorio = {id:string;usuario_id:string;nome:string;destinatarios:string[];itens:Item[];estado:string;aceito_em:string|null;pede_confirmacao:boolean;recebido_em:string|null};
+const assuntoDe = (r: Relatorio, itens: Item[]) => `Plantão TI · ${r.nome} · ${periodo(itens).texto}`;
+
+// E-mail no mesmo padrão dos Módulos: logo (anexo inline "cid"), área, título, blocos de resumo e tabela zebrada.
+// Com link: botão "Confirmar recebimento" + o link em texto puro (Outlook que bloqueia botão).
+function montarEmail(r: Relatorio, itens: Item[], enviadoPor: string|null, link: string|null, aviso?: string){
+  const total=itens.reduce((s,a)=>s+Number(a.minutos),0), per=periodo(itens);
+  const td=`border-bottom:1px solid ${COR.linha};padding:7px 8px;vertical-align:top;color:${COR.texto}`, th=`style="background:${COR.cabecalho};padding:7px 8px;text-align:left;color:${COR.texto}"`;
+  const linhas=itens.map((a,i)=>{const fundo=i%2?'':`background:${COR.zebra};`,c=`style="${fundo}${td}"`,n=`style="${fundo}${td};white-space:nowrap"`;
+    return `<tr><td ${n}>${esc(data(a.inicio))}</td><td ${n}>${esc(terminoPdf(a))}</td><td ${n}>${tempo(Number(a.minutos))}</td><td ${c}>${esc(ou(a.solicitante))}</td><td ${c}>${esc(ou(a.setor))}</td><td ${c}><strong>${esc(a.titulo)}</strong>${a.descricao?.trim()?`<br>${esc(a.descricao)}`:''}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`;}).join('');
+  const blocos=[['Colaborador',esc(r.nome)],['Período',esc(per.texto)],['Atendimentos',String(itens.length)],['Tempo total',tempo(total)]]
+    .map(([k,v])=>`<td style="background:${COR.bloco};padding:8px 12px;vertical-align:top"><div style="font-size:11px;color:${COR.suave}">${k}</div><div style="font-size:18px;font-weight:bold;color:${COR.titulo}">${v}</div></td>`).join('<td style="width:6px"></td>');
+  const confirmar=link?`<table style="border-collapse:collapse;margin:4px 0 6px"><tr><td style="background:${COR.area};border-radius:4px"><a href="${esc(link)}" style="display:inline-block;padding:11px 24px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none">Confirmar recebimento</a></td></tr></table>
+<p style="font-size:12px;color:${COR.texto};margin:0 0 4px">Ao clicar, informe seu nome para registrar o recebimento.</p>
+<p style="font-size:11px;color:${COR.suave};margin:0 0 18px;word-break:break-all">Se o botão não abrir, copie este endereço no navegador: ${esc(link)}</p>`:'';
+  const alerta=aviso?`<p style="background:#fff4e0;border-left:4px solid #b26a00;color:#5c3700;padding:9px 12px;margin:0 0 14px"><strong>${esc(aviso)}</strong></p>`:'';
+  return `<html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${COR.texto}">
+<table style="border-collapse:collapse;margin:0 0 6px"><tr><td style="padding:0 18px 0 0;vertical-align:middle"><img src="cid:logo-santa-casa" alt="Santa Casa de Andradina" width="120" height="50"></td><td style="vertical-align:middle"><div style="font-size:12px;font-weight:bold;color:${COR.area}">${AREA}</div><div style="font-size:20px;font-weight:bold;color:${COR.titulo}">Relatório de atendimentos fora do expediente</div></td></tr></table>
+<p style="font-size:11px;color:${COR.suave};margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid ${COR.linha}">Referência: ${esc(r.id)} · Horário de Brasília · Cada atendimento conta no dia em que começou</p>
+${alerta}<p>Olá,</p><p>Segue o registro dos atendimentos feitos pela equipe de TI fora do horário de expediente, para controle interno. O mesmo relatório vai em PDF, anexo.${enviadoPor?` Enviado por ${esc(enviadoPor)} (gerente da TI).`:''}</p>
+<table style="border-collapse:collapse;margin:0 0 16px"><tr>${blocos}</tr></table>
+${confirmar}<table style="border-collapse:collapse;font-size:12px"><thead><tr><th ${th}>Início</th><th ${th}>Término</th><th ${th}>Tempo</th><th ${th}>Solicitante</th><th ${th}>Setor</th><th ${th}>Atividade</th></tr></thead><tbody>${linhas}</tbody></table>
+<p style="font-size:11px;color:${COR.rodape};margin-top:16px">Santa Casa · Tecnologia da Informação · Uso interno</p></body></html>`;
+}
+
+// Envia pelo Graph (/me/sendMail). Fora do 202, registra no log o erro completo do Microsoft 365.
+async function enviarGraph(ms: string, ref: string, assunto: string, html: string, destinatarios: string[], anexos: unknown[]){
+  let resp: Response;
+  try {
+    resp=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:`Bearer ${ms}`,'Content-Type':'application/json'},
+      body:JSON.stringify({message:{subject:assunto,body:{contentType:'HTML',content:html},toRecipients:destinatarios.map(address=>({emailAddress:{address}})),attachments:anexos},saveToSentItems:true}),
+      signal:AbortSignal.timeout(20000)});
+  }catch(e){console.error('Graph sem resposta',{relatorio:ref,erro:e instanceof Error?e.message:String(e)});return {ok:false,status:0};}
+  if(resp.status===202)return {ok:true,status:202};
+  let corpo: {error?:{code?:string;message?:string;innerError?:Record<string,string>}}|null=null;try{corpo=await resp.json();}catch{/* corpo vazio */}
+  console.error('Falha de envio no Graph',{relatorio:ref,status:resp.status,code:corpo?.error?.code,message:corpo?.error?.message,
+    requestId:resp.headers.get('request-id')||corpo?.error?.innerError?.['request-id'],clientRequestId:resp.headers.get('client-request-id')||corpo?.error?.innerError?.['client-request-id'],date:corpo?.error?.innerError?.date});
+  return {ok:false,status:resp.status};
+}
+const anexos = (r: Relatorio, itens: Item[], enviadoPor: string|null) => [
+  {'@odata.type':'#microsoft.graph.fileAttachment',name:nomeArquivo(r.nome,itens),contentType:'application/pdf',contentBytes:gerarPdf(r.nome,itens,r.id,enviadoPor||undefined)},
+  {'@odata.type':'#microsoft.graph.fileAttachment',name:'logo-santa-casa.png',contentType:'image/png',contentBytes:LOGO_PNG.split(',')[1],contentId:'logo-santa-casa',isInline:true}];
+
 Deno.serve(async req => {
   if(req.method==='OPTIONS')return new Response('ok',{headers});
   if(req.method!=='POST')return json({error:'Método não permitido.'},405);
@@ -134,11 +192,12 @@ Deno.serve(async req => {
     const body=await req.json();
     if(body.acao==='config')return json({destinatarios,remetente:email});
 
-    // Só o gerente envia (ou baixa) o relatório de outro colaborador.
+    // Só o gerente envia (ou baixa, ou lembra) o relatório de outro colaborador.
     const alvo=body.usuario||auth.user.id;
     if(typeof alvo!=='string'||!uuid.test(alvo))return json({error:'Colaborador inválido.'},400);
     if(alvo!==auth.user.id&&!gerente)return json({error:'Somente o gerente pode enviar o relatório de outro colaborador.'},403);
-    const buscarRelatorio=async(id: string)=>{let q=admin.from('relatorios_horas').select('*').eq('id',id);if(!gerente)q=q.eq('usuario_id',auth.user.id);const {data:r}=await q.maybeSingle();return r;};
+    const buscarRelatorio=async(id: unknown)=>{if(typeof id!=='string'||!uuid.test(id))return null;let q=admin.from('relatorios_horas').select('*').eq('id',id);if(!gerente)q=q.eq('usuario_id',auth.user.id);const {data:r}=await q.maybeSingle();return r as Relatorio|null;};
+    const enviadoPorDe=(r: Relatorio)=>r.usuario_id!==auth.user.id?eu.nome:null;
 
     // PDF para download: de um envio do histórico ou da prévia (atendimentos ainda não enviados).
     if(body.acao==='pdf'){
@@ -166,7 +225,23 @@ Deno.serve(async req => {
     const contaEmail=String(conta.mail||conta.userPrincipalName||'').toLowerCase();
     if(contaEmail!==email)return json({error:'A conta Microsoft confirmada não é a mesma do login no Plantão TI. Saia e entre novamente.',codigo:TOKEN_MS},401);
 
-    let relatorio;
+    // Lembrete ao RH: reenvia o MESMO relatório (snapshot), com o mesmo link de confirmação.
+    // registrar_lembrete aplica as regras (7 dias do envio, 1 a cada 24 h, ainda sem confirmação).
+    if(body.acao==='lembrete'){
+      const r=await buscarRelatorio(body.relatorio_id);
+      if(!r)return json({error:'Relatório não encontrado.'},404);
+      const link=await linkConfirmacao(r.id);
+      if(!link)return json({error:'A confirmação de recebimento ainda não está configurada no servidor. Avise o gerente da TI.'},503);
+      const {error:erroLembrete}=await admin.rpc('registrar_lembrete',{p_relatorio:r.id});
+      if(erroLembrete)return json({error:erroLembrete.message},409);
+      const itens=[...r.itens].sort((x,y)=>x.inicio.localeCompare(y.inicio)), por=enviadoPorDe(r);
+      const html=montarEmail(r,itens,por,link,`Este relatório foi enviado em ${data(r.aceito_em!)} e ainda não teve o recebimento confirmado.`);
+      const envio=await enviarGraph(ms,r.id,`Lembrete: ${assuntoDe(r,itens)}`,html,r.destinatarios,anexos(r,itens,por));
+      if(!envio.ok)return json({error:envio.status===0?'O Microsoft 365 não respondeu. Confira seus Itens Enviados no Outlook: o lembrete pode ter saído.':'O Microsoft 365 não aceitou o lembrete. Tente de novo mais tarde ou avise o gerente da TI.',codigo:envio.status===401?TOKEN_MS:undefined},502);
+      return json({id:r.id,estado:'lembrete'});
+    }
+
+    let relatorio: Relatorio|null;
     if(body.relatorio_id){
       relatorio=await buscarRelatorio(body.relatorio_id);
       if(!relatorio)return json({error:'Relatório não encontrado.'},404);
@@ -179,42 +254,20 @@ Deno.serve(async req => {
     if(!relatorio?.id)return json({error:'Não foi possível preparar o relatório. Atualize a lista e confira o histórico.'},500);
     if(relatorio.estado==='aceito')return json({id:relatorio.id,estado:'aceito'});
 
-    const itens=[...relatorio.itens as Item[]].sort((x,y)=>x.inicio.localeCompare(y.inicio)), total=itens.reduce((s,a)=>s+Number(a.minutos),0);
-    const porOutro=relatorio.usuario_id!==auth.user.id, per=periodo(itens);
-    const assunto=`Plantão TI · ${relatorio.nome} · ${per.texto}`;
-    // E-mail no mesmo padrão dos Módulos: logo (anexo inline "cid"), área, título, blocos de resumo e tabela zebrada.
-    const td=`border-bottom:1px solid ${COR.linha};padding:7px 8px;vertical-align:top;color:${COR.texto}`, th=`style="background:${COR.cabecalho};padding:7px 8px;text-align:left;color:${COR.texto}"`;
-    const linhas=itens.map((a,i)=>{const fundo=i%2?'':`background:${COR.zebra};`,c=`style="${fundo}${td}"`,n=`style="${fundo}${td};white-space:nowrap"`;
-      return `<tr><td ${n}>${esc(data(a.inicio))}</td><td ${n}>${esc(terminoPdf(a))}</td><td ${n}>${tempo(Number(a.minutos))}</td><td ${c}>${esc(ou(a.solicitante))}</td><td ${c}>${esc(ou(a.setor))}</td><td ${c}><strong>${esc(a.titulo)}</strong>${a.descricao?.trim()?`<br>${esc(a.descricao)}`:''}<br>Serviço realizado: ${esc(a.solucao)}</td></tr>`;}).join('');
-    const blocos=[['Colaborador',esc(relatorio.nome)],['Período',esc(per.texto)],['Atendimentos',String(itens.length)],['Tempo total',tempo(total)]]
-      .map(([k,v])=>`<td style="background:${COR.bloco};padding:8px 12px;vertical-align:top"><div style="font-size:11px;color:${COR.suave}">${k}</div><div style="font-size:18px;font-weight:bold;color:${COR.titulo}">${v}</div></td>`).join('<td style="width:6px"></td>');
-    const html=`<html lang="pt-BR"><head><meta charset="utf-8"></head><body style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${COR.texto}">
-<table style="border-collapse:collapse;margin:0 0 6px"><tr><td style="padding:0 18px 0 0;vertical-align:middle"><img src="cid:logo-santa-casa" alt="Santa Casa de Andradina" width="120" height="50"></td><td style="vertical-align:middle"><div style="font-size:12px;font-weight:bold;color:${COR.area}">${AREA}</div><div style="font-size:20px;font-weight:bold;color:${COR.titulo}">Relatório de atendimentos fora do expediente</div></td></tr></table>
-<p style="font-size:11px;color:${COR.suave};margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid ${COR.linha}">Referência: ${esc(relatorio.id)} · Horário de Brasília · Cada atendimento conta no dia em que começou</p>
-<p>Olá,</p><p>Segue o registro dos atendimentos feitos pela equipe de TI fora do horário de expediente, para controle interno. O mesmo relatório vai em PDF, anexo.${porOutro?` Enviado por ${esc(eu.nome)} (gerente da TI).`:''}</p>
-<table style="border-collapse:collapse;margin:0 0 16px"><tr>${blocos}</tr></table>
-<table style="border-collapse:collapse;font-size:12px"><thead><tr><th ${th}>Início</th><th ${th}>Término</th><th ${th}>Tempo</th><th ${th}>Solicitante</th><th ${th}>Setor</th><th ${th}>Atividade</th></tr></thead><tbody>${linhas}</tbody></table>
-<p style="font-size:11px;color:${COR.rodape};margin-top:16px">Santa Casa · Tecnologia da Informação · Uso interno</p></body></html>`;
-    const anexo={'@odata.type':'#microsoft.graph.fileAttachment',name:nomeArquivo(relatorio.nome,itens),contentType:'application/pdf',
-      contentBytes:gerarPdf(relatorio.nome,itens,relatorio.id,porOutro?eu.nome:undefined)};
-    const logoInline={'@odata.type':'#microsoft.graph.fileAttachment',name:'logo-santa-casa.png',contentType:'image/png',contentBytes:LOGO_PNG.split(',')[1],contentId:'logo-santa-casa',isInline:true};
-
-    let response: Response;
-    try {
-      response=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{method:'POST',headers:{Authorization:`Bearer ${ms}`,'Content-Type':'application/json'},
-        body:JSON.stringify({message:{subject:assunto,body:{contentType:'HTML',content:html},toRecipients:(relatorio.destinatarios as string[]).map(address=>({emailAddress:{address}})),attachments:[anexo,logoInline]},saveToSentItems:true}),
-        signal:AbortSignal.timeout(20000)});
-    }catch{
+    const itens=[...relatorio.itens].sort((x,y)=>x.inicio.localeCompare(y.inicio)), por=enviadoPorDe(relatorio);
+    // O link só depende do id; pede_confirmacao vira true junto com 'aceito', ou seja,
+    // só quando o e-mail com o link foi de fato aceito pelo Microsoft 365.
+    const link=await linkConfirmacao(relatorio.id);
+    const envio=await enviarGraph(ms,relatorio.id,assuntoDe(relatorio,itens),montarEmail(relatorio,itens,por,link),relatorio.destinatarios,anexos(relatorio,itens,por));
+    if(!envio.ok&&envio.status===0){
       await admin.from('relatorios_horas').update({ultimo_erro:'O Microsoft 365 não respondeu a tempo. Confira os Itens Enviados antes de tentar de novo.'}).eq('id',relatorio.id).eq('estado','pendente');
       return json({error:'O relatório foi preservado, mas o envio não foi confirmado. Confira seus Itens Enviados no Outlook antes de usar “Tentar novamente” no histórico.'},502);
     }
-    if(response.status!==202){
-      const codigo=response.status===401?TOKEN_MS:undefined;
-      await admin.from('relatorios_horas').update({ultimo_erro:`O Microsoft 365 recusou o envio (código ${response.status}).`}).eq('id',relatorio.id).eq('estado','pendente');
-      console.error('Falha de envio',{relatorio:relatorio.id,status:response.status});
-      return json({error:'O Microsoft 365 não aceitou o envio. O relatório está reservado no histórico para uma nova tentativa.',codigo},502);
+    if(!envio.ok){
+      await admin.from('relatorios_horas').update({ultimo_erro:`O Microsoft 365 recusou o envio (código ${envio.status}).`}).eq('id',relatorio.id).eq('estado','pendente');
+      return json({error:'O Microsoft 365 não aceitou o envio. O relatório está reservado no histórico para uma nova tentativa.',codigo:envio.status===401?TOKEN_MS:undefined},502);
     }
-    const {error:saveError}=await admin.from('relatorios_horas').update({estado:'aceito',aceito_em:new Date().toISOString(),provedor_id:`graph:${email}`,ultimo_erro:null}).eq('id',relatorio.id);
+    const {error:saveError}=await admin.from('relatorios_horas').update({estado:'aceito',aceito_em:new Date().toISOString(),provedor_id:`graph:${email}`,ultimo_erro:null,pede_confirmacao:!!link}).eq('id',relatorio.id);
     if(saveError)return json({error:'O e-mail foi enviado, mas o histórico não foi atualizado. Não reenvie: avise o gerente da TI.'},502);
     return json({id:relatorio.id,estado:'aceito'});
   }catch(error){console.error(error instanceof Error?error.message:'Falha desconhecida');return json({error:'Não foi possível processar a solicitação. Atualize a lista e consulte o histórico antes de tentar novamente.'},500);}

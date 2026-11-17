@@ -108,7 +108,8 @@
     #hLista .reg .registro-acao{grid-area:acao;display:flex;gap:6px;min-width:0}#hLista .reg .registro-acao button{padding:4px 10px;font-size:13px}
     #hLista .registro-exclusao{background:#fff7f6;border:1px solid #e7b3af;border-radius:8px;padding:12px 15px;margin:-2px 0 8px}#hLista .registro-exclusao p{margin:0 0 9px;color:#74231f;font-size:14px}#hLista .registro-exclusao button[data-h-confirmar]{background:#a62822;border-color:#a62822;color:#fff;font-weight:600}
     #horas .rel-envios{margin-top:30px}#horas .rel-envios h4{font-size:17px;margin:0 0 2px}.rel-envios>.meta{margin:0 0 6px}
-    .envio{display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid var(--line);padding:12px 0}.envio p{margin:3px 0 0}.envio-acoes{display:flex;gap:6px;flex:none}.envio-acoes button{padding:5px 11px;font-size:13px}
+    .envio{display:flex;justify-content:space-between;align-items:center;gap:14px;border-top:1px solid var(--line);padding:12px 0}.envio p{margin:3px 0 0}.envio-acoes{display:flex;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end}.envio-acoes button{padding:5px 11px;font-size:13px}
+    .envio-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:6px}#horas .envio-tags .tag{margin:0}#horas .tag-ok{background:#e6f4ea;color:#14532d}#horas .tag-espera{background:var(--brand-soft);color:var(--brand)}#horas .tag-alerta{background:#fdecea;color:#a12a20;font-weight:600}#hSemConfirmacao b{color:#a12a20}
     @media(max-width:760px){#horas .rel-painel{grid-template-columns:1fr;grid-template-areas:"num" "semana" "acoes";padding:18px}.rel-total strong{font-size:36px}.rel-acoes button{flex:1}
       #horas .reg{grid-template-columns:62px minmax(0,1fr) auto;grid-template-areas:"hora corpo dur" "hora tags acao";gap:8px 12px}.reg-tags{justify-content:flex-start}.envio{flex-direction:column;align-items:flex-start}#horas .horas-lista-top h3{font-size:24px!important}}
     @media(max-width:900px){#telaApp main{padding-left:16px;padding-right:16px}}
@@ -163,7 +164,7 @@
         </div>
         <section id="hPainel" class="rel-painel" aria-label="Resumo do período">
           <div class="rel-numeros"><p class="rel-total"><strong id="hTotalHoras">0h 00min</strong> <span id="hResumo" tabindex="-1" aria-live="polite">Carregando seus registros…</span></p>
-            <p class="rel-situacoes"><span id="hQtdEnviar"></span><span id="hQtdEnviados"></span></p></div>
+            <p class="rel-situacoes"><span id="hQtdEnviar"></span><span id="hQtdEnviados"></span><span id="hSemConfirmacao" class="hide"></span></p></div>
           <div class="rel-semana"><div id="hRegua" class="regua" role="img"></div></div>
           <div class="rel-acoes"><button id="hPreparar" class="primary" disabled>Conferir e enviar ao RH</button><button id="hPdf" disabled>Baixar PDF</button><button id="hCsv" disabled>Exportar CSV</button></div>
         </section>
@@ -175,7 +176,7 @@
         </section>
         <div id="hEquipe" class="horas-equipe hide" aria-label="Horas por colaborador"></div>
         <div id="hLista" role="region" aria-label="Atendimentos registrados"></div>
-        <section id="hEnvios" class="rel-envios" aria-labelledby="hEnviosTitulo"><h4 id="hEnviosTitulo">Envios ao RH</h4><p class="meta">“Enviado” quer dizer que o Microsoft 365 entregou o e-mail. A cópia fica nos Itens Enviados de quem enviou.</p><div id="hHistorico"></div></section>
+        <section id="hEnvios" class="rel-envios" aria-labelledby="hEnviosTitulo"><h4 id="hEnviosTitulo">Envios ao RH</h4><p class="meta">O e-mail traz um botão para o RH confirmar o recebimento. Sem confirmação em 7 dias, dá para reenviar um lembrete. A cópia de cada envio fica nos Itens Enviados de quem enviou.</p><div id="hHistorico"></div></section>
       </section>
       </div>
     </section>`;
@@ -206,6 +207,18 @@
     return ['',''];}
   const nomeDia=dia=>new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long'}).format(new Date(dia+'T12:00:00Z'));
   const envioPendenteKey='plantao-ti-envio-pendente';
+  // Confirmação de recebimento pelo RH: envios novos pedem confirmação pelo link do e-mail.
+  // Sem confirmação em 7 dias corridos -> alerta e lembrete (no máximo 1 a cada 24 h).
+  const DIA_MS=864e5;
+  function situacaoEnvio(r){
+    if(r.estado!=='aceito')return {tipo:'pendente'};
+    if(!r.pede_confirmacao)return {tipo:'enviado'};
+    if(r.recebido_em)return {tipo:'recebido'};
+    const dias=Math.floor((Date.now()-Date.parse(r.aceito_em))/DIA_MS);
+    if(dias<7)return {tipo:'aguardando',dias};
+    const proximo=r.ultimo_lembrete_em?Date.parse(r.ultimo_lembrete_em)+DIA_MS:0;
+    return {tipo:'sem-confirmacao',dias,bloqueadoAte:proximo>Date.now()?proximo:0};
+  }
   const ehGerente=()=>perfil?.cargo==='Gerente';
   const verEquipe=()=>ehGerente()&&paginaRelatorios;
   const nomeDe=id=>perfisNomes[id]||(id===usuarioAtual?perfil?.nome:'')||'Colaborador';
@@ -218,7 +231,11 @@
   function erroTexto(e){return /42P01|PGRST205|schema cache|does not exist/i.test(`${e.code||''} ${e.message}`)?'Não foi possível acessar os relatórios. Fale com o responsável pela instalação.':e.message||'Não foi possível concluir. Confira a conexão e tente novamente.';}
   document.addEventListener('sessao-pronta',async e=>{usuarioAtual=e.detail.id;await carregarHoras();
     // Voltou da confirmação da conta Microsoft pedida no envio ao RH.
-    if(paginaRelatorios&&sessionStorage.getItem(envioPendenteKey)){sessionStorage.removeItem(envioPendenteKey);$('hPainel').scrollIntoView({block:'center'});msg(tokenMicrosoft()?'Conta Microsoft confirmada. Clique em “Conferir resumo para o RH” e depois em “Enviar ao RH”.':'Não foi possível confirmar a conta Microsoft. Tente enviar novamente.',!tokenMicrosoft());}});
+    const pendente=paginaRelatorios&&sessionStorage.getItem(envioPendenteKey);
+    if(pendente){sessionStorage.removeItem(envioPendenteKey);
+      const orientacao={novo:'Clique em “Conferir e enviar ao RH” e depois em “Enviar ao RH”.',retomar:'Em “Envios ao RH”, clique em “Tentar novamente” no envio que ficou pendente.',lembrete:'Em “Envios ao RH”, clique em “Reenviar lembrete ao RH”.'}[pendente]||'Clique em “Conferir e enviar ao RH” e depois em “Enviar ao RH”.';
+      $(pendente==='novo'||pendente==='1'?'hPainel':'hEnvios').scrollIntoView({block:'center'});
+      msg(tokenMicrosoft()?`Conta Microsoft confirmada. ${orientacao}`:'Não foi possível confirmar a conta Microsoft. Tente enviar novamente.',!tokenMicrosoft());}});
   async function carregarHoras(){
     const foco=$('hLista').contains(document.activeElement)||$('hHistorico').contains(document.activeElement)||$('horasPreview').contains(document.activeElement);
     const rodada=++geracao;ready=false;$('hPreparar').disabled=true;$('hCsv').disabled=true;$('horasPreview').classList.add('hide');
@@ -289,6 +306,8 @@
     const soma=l=>duracao(l.reduce((s,a)=>s+Number(a.minutos),0));
     $('hTotalHoras').textContent=duracao(total);
     $('hQtdEnviar').innerHTML=`<b>${pend.length}</b> a enviar <em>${soma(pend)}</em>`;$('hQtdEnviados').innerHTML=`<b>${env.length}</b> já enviado(s) <em>${soma(env)}</em>`;
+    const semConf=relatorios.filter(r=>(!verEquipe()||filtroColab==='todos'||r.usuario_id===filtroColab)&&situacaoEnvio(r).tipo==='sem-confirmacao').length;
+    $('hSemConfirmacao').classList.toggle('hide',!semConf);$('hSemConfirmacao').innerHTML=`<b>${semConf}</b> envio(s) sem confirmação do RH`;
     // Total por dia da semana, pelo dia em que o chamado começou (sex 17h em diante em outra cor).
     const dias=Array.from({length:7},()=>({sem:0,fds:0}));
     for(const a of finalizados){const m=Number(a.minutos)||0,{semana}=partesBR(a.inicio);dias[semana][ehFds(a.inicio)?'fds':'sem']+=m;}
@@ -316,7 +335,11 @@
     const vazio=registros.length?'Nenhum atendimento neste filtro. Troque o período ou a situação acima.':'Nenhum relatório registrado. Use “Novo relatório” para criar o primeiro.';
     $('hLista').innerHTML=itens.length?listaPorDia(paginaRelatorios||mostrarTodos?itens:itens.slice(0,3)):`<p class="empty">${vazio}</p>`;
     $('hHistorico').innerHTML=relatorios.length?relatorios.map(r=>{const min=r.itens.reduce((s,a)=>s+Number(a.minutos),0),dias=r.itens.map(a=>diaBrasil(a.inicio)).sort(),br=d=>d.split('-').reverse().join('/');
-      return `<article class="envio"><div><strong>${verEquipe()?esc(r.nome)+', ':''}${dias[0]===dias[dias.length-1]?br(dias[0]):`${br(dias[0])} a ${br(dias[dias.length-1])}`}</strong><p class="meta">${r.itens.length} atendimento(s), ${duracao(min)}. ${r.estado==='aceito'?`Enviado em ${brasil(r.aceito_em)} de ${esc(r.remetente)} para ${esc(r.destinatarios.join(', '))}.`:'Envio não confirmado.'}</p>${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<p class="err">${esc(r.ultimo_erro||'Confira os Itens Enviados no Outlook antes de tentar de novo.')}</p>`:''}</div><div class="envio-acoes">${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<button data-h-retomar="${r.id}">Tentar novamente</button>`:''}<button data-h-pdf="${r.id}">Baixar PDF</button></div></article>`;}).join(''):'<p class="meta">Nenhum envio ao RH ainda.</p>';
+      const s=situacaoEnvio(r),lembrete=s.tipo==='sem-confirmacao'&&ENVIO_RH_ATIVO;
+      const etiqueta={recebido:`<span class="tag tag-ok">Recebido pelo RH em ${brasil(r.recebido_em)} por ${esc(r.recebido_por)}</span>`,aguardando:'<span class="tag tag-espera">Aguardando confirmação do RH</span>','sem-confirmacao':`<span class="tag tag-alerta">Sem confirmação há ${s.dias} dias</span>`}[s.tipo]||'';
+      const extras=`${r.lembretes>0?`<span class="meta">${r.lembretes} lembrete(s) enviado(s)</span>`:''}`;
+      const proximo=lembrete&&s.bloqueadoAte?`<p class="meta">Próximo lembrete a partir de ${brasil(s.bloqueadoAte)}: só um por dia.</p>`:'';
+      return `<article class="envio"><div><strong>${verEquipe()?esc(r.nome)+', ':''}${dias[0]===dias[dias.length-1]?br(dias[0]):`${br(dias[0])} a ${br(dias[dias.length-1])}`}</strong><p class="meta">${r.itens.length} atendimento(s), ${duracao(min)}. ${r.estado==='aceito'?`Enviado em ${brasil(r.aceito_em)} de ${esc(r.remetente)} para ${esc(r.destinatarios.join(', '))}.`:'Envio não confirmado.'}</p>${etiqueta||extras?`<div class="envio-tags">${etiqueta}${extras}</div>`:''}${proximo}${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<p class="err">${esc(r.ultimo_erro||'Confira os Itens Enviados no Outlook antes de tentar de novo.')}</p>`:''}</div><div class="envio-acoes">${r.estado!=='aceito'&&ENVIO_RH_ATIVO?`<button data-h-retomar="${r.id}">Tentar novamente</button>`:''}${lembrete?`<button data-h-lembrete="${r.id}" ${s.bloqueadoAte?`disabled title="Já foi enviado um lembrete nas últimas 24 horas"`:''}>Reenviar lembrete ao RH</button>`:''}<button data-h-pdf="${r.id}">Baixar PDF</button></div></article>`;}).join(''):'<p class="meta">Nenhum envio ao RH ainda.</p>';
   }
   function atualizarEtapas(){
     // "Dados" só fica completa com assunto, solicitante e setor.
@@ -397,8 +420,11 @@
   $('hCancelarEnvio').onclick=()=>{$('horasPreview').classList.add('hide');$('hPreparar').focus();};
   // O e-mail sai da caixa Microsoft 365 de quem envia. Sem token válido, a
   // Microsoft confirma a conta (sem pedir senha, em geral) e volta para esta tela.
-  async function pedirConfirmacaoMicrosoft(){sessionStorage.setItem(envioPendenteKey,'1');msg('Confirmando sua conta Microsoft para enviar o e-mail…');try{await confirmarMicrosoft();}catch(e){sessionStorage.removeItem(envioPendenteKey);msg(e.message,true);}}
-  async function enviar(body,botao){if(busy||!ENVIO_RH_ATIVO)return;const ms=tokenMicrosoft();if(!ms)return pedirConfirmacaoMicrosoft();busy=true;botao.disabled=true;msg('Enviando o resumo pelo seu e-mail. Aguarde a confirmação…');let reconfirmar=false;try{const data=await invoke('enviar-relatorio-rh',{...body,ms_token:ms});msg(`Relatório ${data.id.slice(0,8)} enviado ao RH. A cópia está nos Itens Enviados do seu Outlook.`);}catch(e){if(e.codigo==='token_microsoft'){esquecerTokenMicrosoft();reconfirmar=true;}else msg(e.message,true);}finally{busy=false;botao.disabled=false;}if(reconfirmar)return pedirConfirmacaoMicrosoft();await carregarHoras();$('hResumo').focus();}
+  // tipo: 'novo' (Conferir e enviar), 'retomar' (Tentar novamente) ou 'lembrete'; orienta a pessoa ao voltar.
+  async function pedirConfirmacaoMicrosoft(tipo='novo'){sessionStorage.setItem(envioPendenteKey,tipo);msg('Confirmando sua conta Microsoft para enviar o e-mail…');try{await confirmarMicrosoft();}catch(e){sessionStorage.removeItem(envioPendenteKey);msg(e.message,true);}}
+  async function enviar(body,botao){if(busy||!ENVIO_RH_ATIVO)return;const tipo=body.acao==='lembrete'?'lembrete':body.relatorio_id?'retomar':'novo';const ms=tokenMicrosoft();if(!ms)return pedirConfirmacaoMicrosoft(tipo);busy=true;botao.disabled=true;msg(tipo==='lembrete'?'Enviando o lembrete pelo seu e-mail. Aguarde a confirmação…':'Enviando o resumo pelo seu e-mail. Aguarde a confirmação…');let reconfirmar=false;
+    try{const data=await invoke('enviar-relatorio-rh',{...body,ms_token:ms});msg(tipo==='lembrete'?'Lembrete enviado ao RH, com o mesmo relatório e o link de confirmação. A cópia está nos Itens Enviados do seu Outlook.':`Relatório ${data.id.slice(0,8)} enviado ao RH. O e-mail traz um botão para o RH confirmar o recebimento; a cópia está nos Itens Enviados do seu Outlook.`);}
+    catch(e){if(e.codigo==='token_microsoft'){esquecerTokenMicrosoft();reconfirmar=true;}else msg(e.message,true);}finally{busy=false;botao.disabled=false;}if(reconfirmar)return pedirConfirmacaoMicrosoft(tipo);await carregarHoras();$('hResumo').focus();}
   $('hEnviar').onclick=()=>enviar({ids:prontos.map(a=>a.id),versoes,usuario:alvoEnvio},$('hEnviar'));
   // PDF gerado pela mesma função do envio, igual ao anexo que vai para o RH.
   async function baixarPdf(body,botao){if(busy)return;busy=true;botao.disabled=true;msg('Gerando o PDF…');
@@ -408,6 +434,6 @@
   $('hPdf').onclick=()=>{const itens=filtrados().filter(a=>a.fim);if(!itens.length)return;if(itens.length>200)return msg('Escolha um período menor: o PDF aceita até 200 atendimentos.',true);
     if(new Set(itens.map(a=>a.usuario_id)).size>1)return msg('Escolha um colaborador no filtro para baixar o PDF dele.',true);
     baixarPdf({ids:itens.map(a=>a.id),usuario:itens[0].usuario_id},$('hPdf'));};
-  $('hHistorico').onclick=e=>{const p=e.target.closest('[data-h-pdf]');if(p)return baixarPdf({relatorio_id:p.dataset.hPdf},p);const b=e.target.closest('[data-h-retomar]');if(b)enviar({relatorio_id:b.dataset.hRetomar},b);};
+  $('hHistorico').onclick=e=>{const p=e.target.closest('[data-h-pdf]');if(p)return baixarPdf({relatorio_id:p.dataset.hPdf},p);const l=e.target.closest('[data-h-lembrete]');if(l)return enviar({acao:'lembrete',relatorio_id:l.dataset.hLembrete},l);const b=e.target.closest('[data-h-retomar]');if(b)enviar({relatorio_id:b.dataset.hRetomar},b);};
   $('hCsv').onclick=()=>{const itens=filtrados().filter(a=>a.fim),cel=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"',rows=[['Colaborador','Início (Brasília)','Término (Brasília)','Tempo atendido (min)','Assunto','Solicitante','Setor','Contexto anterior','Relato','Envio ao RH']];itens.forEach(a=>rows.push([nomeDe(a.usuario_id),brasil(a.inicio),brasil(a.fim),Number(a.minutos).toFixed(2),a.titulo,a.solicitante,a.setor,a.descricao,a.solucao,estado(a)]));const url=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(cel).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='relatorios-ti.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 })();

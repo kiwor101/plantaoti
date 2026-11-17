@@ -14,7 +14,11 @@ async function main() {
       // Começa 23:40 e termina 00:20 do dia seguinte (Brasília): conta no dia em que começou.
       {id:'10000000-0000-0000-0000-000000000002',usuario_id:'teste',titulo:'Rede & telefonia',solicitante:'Maria - enfermeira',setor:'UTI adulto',descricao:'',solucao:'Conexão restabelecida',inicio:'2026-10-19T02:40:00Z',fim:'2026-10-19T03:20:00Z',pausa_minutos:0,minutos:40,relatorio_id:null,atualizado_em:'2026-10-19T03:20:00Z'}
     ];
-    window.testState=JSON.parse(sessionStorage.getItem('plantao-test-state')||'null')||{rows:fixture,reports:[],payloads:[],mailCalls:0,aiCalls:0};
+    // Envios ao RH em cada situação da confirmação de recebimento.
+    const diasAtras=n=>new Date(Date.now()-n*864e5).toISOString();
+    const envio=(id,extra)=>({id,usuario_id:'teste',nome:'Funcionário de teste',remetente:'teste@example.invalid',destinatarios:['rh@example.invalid'],itens:[{inicio:'2026-10-10T22:00:00Z',minutos:30}],estado:'aceito',criado_em:diasAtras(20),aceito_em:diasAtras(20),pede_confirmacao:true,recebido_em:null,recebido_por:null,lembretes:0,ultimo_lembrete_em:null,...extra});
+    const envios=[envio('r-antigo',{pede_confirmacao:false}),envio('r-recebido',{recebido_em:'2026-11-16T14:30:00Z',recebido_por:'Maria do RH'}),envio('r-aguardando',{aceito_em:diasAtras(2)}),envio('r-alerta',{aceito_em:diasAtras(9)}),envio('r-bloqueado',{aceito_em:diasAtras(10),lembretes:1,ultimo_lembrete_em:diasAtras(0.1)})];
+    window.testState=JSON.parse(sessionStorage.getItem('plantao-test-state')||'null')||{rows:fixture,reports:envios,payloads:[],lembretes:[],mailCalls:0,aiCalls:0};
     const persist=()=>sessionStorage.setItem('plantao-test-state',JSON.stringify(testState));
     // Token Microsoft válido na aba, para o envio não abrir o login.
     sessionStorage.setItem('plantao-ti-ms-token',JSON.stringify({t:'token-sintetico',exp:Date.now()+3600000}));
@@ -40,6 +44,7 @@ async function main() {
         if(name==='revisar-relatorio'){testState.aiCalls++;if(window.failAI)return {error:new Error('IA indisponível')};if(window.deferAI)await new Promise(resolve=>window.finishAI=resolve);return {data:{texto:'Foi realizado o ajuste de rede, com restabelecimento da conexão.'}};}
         if(body.acao==='config')return {data:{destinatarios:['rh@example.invalid'],remetente:'teste@example.invalid'}};
         if(body.acao==='pdf')return {data:{arquivo:'teste.pdf',base64:btoa('%PDF-1.4 teste')}};
+        if(body.acao==='lembrete'){testState.lembretes.push(body.relatorio_id);const r=testState.reports.find(r=>r.id===body.relatorio_id);r.lembretes++;r.ultimo_lembrete_em=new Date().toISOString();persist();return {data:{id:r.id,estado:'lembrete'}};}
         testState.mailCalls++;
         const r={id:crypto.randomUUID(),usuario_id:'teste',nome:'Funcionário de teste',remetente:'teste@example.invalid',destinatarios:['rh@example.invalid'],itens:structuredClone(testState.rows.filter(a=>body.ids.includes(a.id))),estado:'aceito',criado_em:new Date().toISOString(),aceito_em:new Date().toISOString()};testState.reports.push(r);for(const a of testState.rows)if(body.ids.includes(a.id))a.relatorio_id=r.id;persist();
         return {data:{id:r.id}};
@@ -151,6 +156,25 @@ async function main() {
     await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(review,'relatorios-mobile.png'),fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.setViewportSize({width:1440,height:1000});
+
+    // Envios ao RH: situação da confirmação de recebimento.
+    const envioDe=id=>page.locator('#hHistorico .envio',{has:page.locator(`[data-h-pdf="${id}"]`)});
+    assert.equal(await envioDe('r-antigo').locator('.tag').count(),0,'Envio antigo: só "Enviado", sem etiqueta');
+    assert.match(await envioDe('r-recebido').locator('.tag-ok').innerText(),/^Recebido pelo RH em 16\/11\/2026, 11:30 por Maria do RH$/);
+    assert.equal(await envioDe('r-aguardando').locator('.tag-espera').innerText(),'Aguardando confirmação do RH');
+    assert.equal(await envioDe('r-aguardando').locator('[data-h-lembrete]').count(),0,'Sem lembrete antes de 7 dias');
+    assert.equal(await envioDe('r-alerta').locator('.tag-alerta').innerText(),'Sem confirmação há 9 dias');
+    assert.equal(await envioDe('r-alerta').locator('[data-h-lembrete]').isEnabled(),true);
+    assert.equal(await envioDe('r-bloqueado').locator('[data-h-lembrete]').isDisabled(),true,'Lembrete há menos de 24 h: botão desabilitado');
+    assert.match(await envioDe('r-bloqueado').innerText(),/1 lembrete\(s\) enviado\(s\)/);
+    assert.match(await envioDe('r-bloqueado').innerText(),/Próximo lembrete a partir de/);
+    assert.equal(await page.locator('#hSemConfirmacao').innerText(),'2 envio(s) sem confirmação do RH');
+    await page.locator('#hHistorico').scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(review,'envios-rh.png'),fullPage:true});
+    await envioDe('r-alerta').locator('[data-h-lembrete]').click();
+    await page.waitForFunction(()=>document.getElementById('horasMensagem').textContent.includes('Lembrete enviado ao RH'));
+    assert.deepEqual(await page.evaluate(()=>testState.lembretes),['r-alerta']);
+    assert.equal(await envioDe('r-alerta').locator('[data-h-lembrete]').isDisabled(),true,'Depois do lembrete, botão fica desabilitado por 24 h');
 
     // CSV: solicitante e setor sim, pausas não.
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#hCsv').click()]);
