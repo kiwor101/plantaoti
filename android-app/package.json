@@ -1,0 +1,21 @@
+{
+  "name": "plantao-ti-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "App Android do Plantão TI (Capacitor). Abre o site publicado; o site continua sendo o mesmo da web.",
+  "scripts": {
+    "preparar": "node preparar-www.cjs",
+    "sync": "node preparar-www.cjs && cap sync android",
+    "icones": "capacitor-assets generate --android --iconBackgroundColor \"#1769df\" --splashBackgroundColor \"#f4f7fc\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2"
+  }
+}
