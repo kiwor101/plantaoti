@@ -25,10 +25,12 @@ $$;
 revoke execute on function private.eh_gerente() from public, anon;
 grant  execute on function private.eh_gerente() to authenticated;
 
--- 3) Define o gerente
-update public.perfis p set cargo = 'Gerente'
+-- 3) Define o gerente (Pedro, conta gerencia.ti)
+update public.perfis p set cargo = 'Gerente', nome = 'Pedro'
   from auth.users u
  where u.id = p.id and lower(u.email) = 'gerencia.ti@santacasaandradina.org';
+update public.emails_permitidos set nome = 'Pedro'
+ where email = 'gerencia.ti@santacasaandradina.org';
 
 do $$
 begin
