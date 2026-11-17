@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Página pública do RH: não carrega app-auth.js nem passa pelo login. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Confirmar recebimento · Plantão TI</title>
+<meta name="theme-color" content="#1769df">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#f6f8fb;--card:#fff;--ink:#111a33;--mute:#67758d;--line:#dce3ec;--bad:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;background:#fff;color:var(--ink)}
+button,input{font:inherit;color:inherit}
+input{width:100%;min-width:0;padding:10px 14px;border:1px solid #cbd5e3;border-radius:7px;background:var(--card);caret-color:var(--brand)}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:10px 16px;border-radius:7px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+button:disabled{opacity:.55;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.hide{display:none!important}
+.err{color:var(--bad);font-size:14px;margin:8px 0 0}.err:empty{display:none}
+.conf-logo{display:block;width:150px;height:auto;margin:0 0 28px}
+.conf-resumo{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0 0 28px;padding:16px 18px;background:#f0f7fb;border-radius:9px}
+.conf-resumo dt{color:var(--mute);font-size:13px}.conf-resumo dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+#confForm label{display:block;font-weight:600;font-size:14px;margin:0 0 8px}
+#confForm input{height:52px;border-radius:9px;background:#f8faff;border-color:#c8d7ed;padding:10px 15px}
+#confForm button{width:100%;min-height:51px;margin-top:18px;font-size:15px;border-radius:9px}
+.conf-ok{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:9px;background:#e6f4ea;color:#14532d;font-weight:500;margin:0 0 24px}
+.conf-ok svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+.conf-nota{font-size:12px;color:var(--mute);margin:18px 0 0}
+</style>
+<link rel="stylesheet" href="login.css">
+</head>
+<body>
+<main class="login-screen">
+  <section class="login-story" aria-label="Plantão TI">
+    <div class="login-brand"><span class="login-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5H8Z"/><path d="M8 3v5h8M8 13l2 2-2 2m5 0h3"/></svg></span><span>Plantão <span>TI</span></span></div>
+    <div class="login-story-copy"><h2>Relatório recebido, <em>registro confirmado.</em></h2><p>A confirmação fica guardada no histórico de envios da equipe de TI.</p></div>
+  </section>
+  <div class="login-panel"><div class="login-panel-inner">
+    <img class="conf-logo" src="icons/logo-santa-casa.png" alt="Irmandade da Santa Casa de Andradina" width="432" height="180">
+
+    <section id="estadoCarregando" aria-live="polite"><h1>Confirmar recebimento</h1><p class="login-panel-intro">Carregando o relatório…</p></section>
+
+    <section id="estadoResumo" class="hide">
+      <h1 id="confTitulo">Confirmar recebimento</h1>
+      <p class="login-panel-intro" id="confIntro">Relatório de atendimentos fora do expediente enviado pela equipe de TI.</p>
+      <div id="confOk" class="conf-ok hide" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span id="confOkTexto"></span></div>
+      <dl class="conf-resumo">
+        <dt>Colaborador</dt><dd id="rColaborador"></dd>
+        <dt>Período</dt><dd id="rPeriodo"></dd>
+        <dt>Atendimentos</dt><dd id="rAtendimentos"></dd>
+        <dt>Tempo total</dt><dd id="rTotal"></dd>
+        <dt>Enviado em</dt><dd id="rEnviado"></dd>
+      </dl>
+      <form id="confForm" class="hide" novalidate>
+        <label for="confNome">Seu nome *</label>
+        <input id="confNome" type="text" maxlength="80" autocomplete="name" required>
+        <p class="err" id="confErro" role="alert"></p>
+        <button type="submit" class="primary" id="confBotao">Confirmar recebimento</button>
+        <p class="conf-nota">O nome fica registrado junto com a data e a hora da confirmação.</p>
+      </form>
+    </section>
+
+    <section id="estadoInvalido" class="hide"><h1>Link inválido</h1><p class="login-panel-intro" id="invalidoTexto">Link inválido ou expirado. Peça um novo envio ao colaborador.</p>
+      <button type="button" id="btnTentar" class="hide">Tentar novamente</button></section>
+  </div></div>
+</main>
+<script>
+(() => {
+  'use strict';
+  const FUNCAO='https://iyrlbfrsrolwhybumler.supabase.co/functions/v1/confirmar-recebimento';
+  const $=id=>document.getElementById(id);
+  const params=new URLSearchParams(location.search),r=params.get('r')||'',t=params.get('t')||'';
+  const quando=s=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(s));
+  const mostrar=id=>['estadoCarregando','estadoResumo','estadoInvalido'].forEach(e=>$(e).classList.toggle('hide',e!==id));
+  function invalido(texto,podeTentar){$('invalidoTexto').textContent=texto;$('btnTentar').classList.toggle('hide',!podeTentar);mostrar('estadoInvalido');}
+  function preencher(d){
+    $('rColaborador').textContent=d.colaborador;$('rPeriodo').textContent=d.periodo;$('rAtendimentos').textContent=String(d.atendimentos);
+    $('rTotal').textContent=d.total;$('rEnviado').textContent=quando(d.enviado_em);
+    const confirmado=!!d.recebido_em;
+    $('confForm').classList.toggle('hide',confirmado);$('confOk').classList.toggle('hide',!confirmado);
+    $('confTitulo').textContent=confirmado?'Recebimento confirmado':'Confirmar recebimento';
+    $('confIntro').classList.toggle('hide',confirmado);
+    if(confirmado)$('confOkTexto').textContent=`Recebimento confirmado por ${d.recebido_por} em ${quando(d.recebido_em)}.`;
+    mostrar('estadoResumo');
+  }
+  async function chamar(opcoes){const resp=await fetch(FUNCAO+(opcoes?'':`?r=${encodeURIComponent(r)}&t=${encodeURIComponent(t)}`),opcoes||{});let d={};try{d=await resp.json();}catch{}return {ok:resp.ok,status:resp.status,d};}
+  async function carregar(){
+    mostrar('estadoCarregando');
+    if(!r||!t)return invalido('Link inválido ou expirado. Peça um novo envio ao colaborador.',false);
+    try{const {ok,status,d}=await chamar();if(ok)return preencher(d);
+      invalido(d.error||'Link inválido ou expirado. Peça um novo envio ao colaborador.',status>=500);}
+    catch{invalido('Não foi possível carregar agora. Confira a conexão e tente novamente.',true);}
+  }
+  $('btnTentar').onclick=carregar;
+  $('confForm').onsubmit=async e=>{
+    e.preventDefault();$('confErro').textContent='';
+    const nome=$('confNome').value.trim().replace(/\s+/g,' ');
+    if(nome.length<2||nome.length>80||/[<>]/.test(nome)){$('confErro').textContent='Informe seu nome (2 a 80 caracteres, sem < ou >).';$('confNome').focus();return;}
+    $('confBotao').disabled=true;$('confBotao').textContent='Confirmando…';
+    try{const {ok,status,d}=await chamar({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({r,t,nome})});
+      if(ok)return preencher(d);
+      if(status===404)return invalido(d.error||'Link inválido ou expirado. Peça um novo envio ao colaborador.',false);
+      $('confErro').textContent=d.error||'Não foi possível registrar a confirmação. Tente novamente.';}
+    catch{$('confErro').textContent='Não foi possível registrar agora. Confira a conexão e tente novamente.';}
+    finally{$('confBotao').disabled=false;$('confBotao').textContent='Confirmar recebimento';}
+  };
+  carregar();
+})();
+</script>
+</body>
+</html>
