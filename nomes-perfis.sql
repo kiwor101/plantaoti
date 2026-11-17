@@ -15,7 +15,7 @@ alter table public.emails_permitidos add column if not exists nome text;
 -- >>> CONFIRA OS NOMES ABAIXO ANTES DE RODAR (é o que aparece no topo da tela) <<<
 update public.emails_permitidos set nome = 'Luiz'        where email = 'suporteti.luiz@santacasaandradina.org';
 update public.emails_permitidos set nome = 'Rafael'      where email = 'suporteti.rafael@santacasaandradina.org';
-update public.emails_permitidos set nome = 'Gerência TI' where email = 'gerencia.ti@santacasaandradina.org';
+update public.emails_permitidos set nome = 'Pedro'       where email = 'gerencia.ti@santacasaandradina.org';
 
 -- 2) Primeiro login: usa o nome da lista; se não tiver, cai no início do e-mail
 create or replace function public.novo_perfil() returns trigger
