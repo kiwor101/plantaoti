@@ -32,6 +32,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--brand);outline-
 .conf-ok{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:9px;background:#e6f4ea;color:#14532d;font-weight:500;margin:0 0 24px}
 .conf-ok svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
 .conf-nota{font-size:12px;color:var(--mute);margin:18px 0 0}
+@media(pointer:coarse){#confForm input{font-size:16px}} /* evita o zoom automático do iPhone */
 </style>
 <link rel="stylesheet" href="login.css">
 </head>

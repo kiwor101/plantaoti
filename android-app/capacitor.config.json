@@ -1,0 +1,23 @@
+{
+  "appId": "br.org.santacasaandradina.plantaoti",
+  "appName": "Plantão TI",
+  "webDir": "www",
+  "server": {
+    "url": "https://plantaoti.santacasaandradina.org/index.html",
+    "errorPath": "offline.html",
+    "allowNavigation": [
+      "plantaoti.santacasaandradina.org",
+      "*.supabase.co",
+      "*.microsoftonline.com",
+      "*.microsoft.com",
+      "*.live.com",
+      "*.msauth.net",
+      "*.msftauth.net"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
