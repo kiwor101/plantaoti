@@ -3,7 +3,8 @@
 verify_jwt = false
 
 [functions.revisar-relatorio]
-verify_jwt = true
+# A função confere a sessão sozinha (auth.getUser), como a enviar-relatorio-rh.
+verify_jwt = false
 
 [functions.confirmar-recebimento]
 # Página pública do RH (confirmar.html), sem login: a segurança é o HMAC do link.

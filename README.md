@@ -52,24 +52,26 @@ Publique **`index.html` e `relatorios.js` juntos**, no mesmo diretório, em hosp
 
 **Projeto atual `vidwjeyguypqhcuhgmar`, em 21/10/2026:** as três migrações já estão aplicadas; não repita `schema.sql` nem as migrações. A 001 de horas foi aplicada e testada no turno anterior, preservando perfis e chamados. Passaram testes transacionais de cálculo, pausas, virada de dia, sobreposição, isolamento por usuário, reserva e bloqueio de edição. A 002 foi aplicada pelo SQL Editor; passaram 10 revisões permitidas, 11ª bloqueada, renovação da janela e permissões. O teste terminou com rollback sem deixar contadores de teste. A 003 foi aplicada pelo SQL Editor sem excluir registros; a política de exclusão, a permissão para `authenticated` e o gatilho de proteção foram confirmados em consulta somente leitura.
 
-## Revisão opcional com IA
+## Revisão opcional com IA (Gemini)
 
-**Melhorar texto** chama a Edge Function `revisar-relatorio` somente com o texto do campo de relato. A função usa OpenAI Responses API, JSON Schema strict e `store: false`. O prompt orienta preservar fatos, grau de certeza e números; é orientação, não garantia de fidelidade. Há checagem de números. Revise a sugestão antes de aplicá-la.
+O botão **Melhorar texto ▾** abre um menu com dois modos: **Melhorar texto** (reescreve com mais clareza, sem mudar os fatos) e **Só corrigir ortografia** (acentos e pontuação, sem reescrever). A Edge Function `revisar-relatorio` envia **somente o texto do relato** ao Gemini (Google AI Studio, plano grátis). O resultado troca o relato direto no campo, e o botão **Desfazer (voltar ao meu texto)** fica disponível até a pessoa editar de novo ou salvar.
 
-A sugestão é editável e só substitui o relato ao clicar em **Usar sugestão**. Se o original mudou desde o pedido, a aplicação rejeita a substituição. Descartar ou encontrar erro de IA não impede salvar.
+Proteções da função:
+- Exige sessão válida (`auth.getUser`) e perfil.
+- Aceita relatos de 20 a 5.000 caracteres e no máximo 10 revisões por hora por usuário (tabela `uso_revisao_ia` e RPC `reservar_revisao_ia`, só `service_role`).
+- Tempo limite de 30 s.
+- Descarta a resposta se algum número do relato mudar.
+- Não registra o texto em log.
+- O prompt manda preservar fatos, números e a marcação do editor, e ignorar instruções escritas dentro do relato. Isso é orientação ao modelo, não garantia, por isso a pessoa confere antes de salvar.
+- Bloqueios do Google, fim de cota grátis (429), resposta vazia ou cortada viram mensagens amigáveis, e o texto original continua no campo.
 
-O limite é de 10 solicitações por usuário por hora, com tabela `uso_revisao_ia` e RPC `reservar_revisao_ia` executável somente por `service_role`. A função exige JWT válido, valida a sessão com `auth.getUser` e verifica o perfil.
+### Publicar
+1. No [Google AI Studio](https://aistudio.google.com), crie uma chave de API e cadastre como `GEMINI_API_KEY` em Supabase → Edge Functions → Secrets. Nunca coloque a chave no repositório nem no front.
+2. `GEMINI_MODEL` é opcional. O padrão é `gemini-3.5-flash-lite`, o Flash-Lite estável e gratuito do AI Studio em novembro de 2026.
+3. Publique `supabase/functions/revisar-relatorio/index.ts` como `revisar-relatorio`, com **Verify JWT desligado**, porque a própria função confere a sessão. Pelo CLI: `supabase functions deploy revisar-relatorio --no-verify-jwt --project-ref <projeto>`.
+4. Sem `GEMINI_API_KEY`, a função responde "A revisão com IA ainda não foi ativada" e nada é enviado ao Google.
 
-### Configurar pelo Dashboard ou CLI
-
-1. Confirme a migração 002 aplicada.
-2. Em Edge Functions → Secrets, cadastre `OPENAI_API_KEY` exclusivamente no servidor. `OPENAI_MODEL` é opcional; padrão `gpt-4o-mini`. Nunca envie a chave no chat ou grave no repo/frontend. Pelo CLI autenticado, use `supabase secrets set --env-file <arquivo-local-protegido> --project-ref <projeto>`; mantenha esse arquivo de segredos fora do repositório.
-3. No Dashboard, publique `supabase/functions/revisar-relatorio/index.ts` como `revisar-relatorio`, com **Verify JWT ligado**. Alternativa CLI: `supabase functions deploy revisar-relatorio --project-ref <projeto>`, mantendo a verificação JWT habilitada (sem `--no-verify-jwt`).
-4. Teste pela aplicação autenticada com texto sintético. Sem chave, a integração não chama a OpenAI. Custos de uso não foram cotados.
-
-No projeto atual, `revisar-relatorio` foi publicada hoje pelo Dashboard, com Verify JWT ligado. O teste live na aplicação retornou **“A revisão com IA ainda não foi ativada”**. Não há `OPENAI_API_KEY` nos Secrets: foram vistos apenas os nomes `RESEND_API_KEY` e `REPORT_FROM`, sem abrir valores. O texto sintético foi limpo sem salvar. Frontend e autenticação real foram verificados; conteúdo gerado por modelo real ainda **não foi testado**.
-
-Referência: [Structured Outputs na Responses API](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+Teste local, com o Gemini simulado: `node tests/revisao-ia.cjs`.
 
 ## RH durante a validação
 
