@@ -51,15 +51,15 @@ async function main(){
   state.limiteErro=true;assert.equal((await call()).status,503);state.limiteErro=false;
   state.permitido=false;const limite=await call();assert.equal(limite.status,429);assert.match(await erro(limite),/limite de 10 revisões/);assert.equal(state.calls,0);state.permitido=true;
 
-  // Pedido ao Gemini: modelo padrão, cabeçalho da chave, instrução de sistema, JSON e temperatura baixa.
+  // Pedido ao Gemini: modelo padrão, cabeçalho da chave, instrução de sistema e JSON.
   const good=await call();assert.equal(good.status,200);
   assert.equal((await good.json()).texto,'A porta 24 foi ajustada e a conexão foi restabelecida.','ignora a parte de pensamento');
   assert.equal(state.url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
   assert.equal(state.headers['x-goog-api-key'],'chave-falsa');
   assert.equal(state.payload.generationConfig.responseMimeType,'application/json');
   assert.deepEqual(state.payload.generationConfig.responseJsonSchema,{type:'object',properties:{texto:{type:'string'}},required:['texto']});
-  assert.equal(state.payload.generationConfig.temperature,0.2);
-  assert.equal(state.payload.generationConfig.thinkingConfig.thinkingLevel,'MINIMAL');
+  // Gemini 3.x: sem temperature/top_p/top_k (obsoletos) e sem thinkingConfig (padrão já é mínimo).
+  assert.deepEqual(Object.keys(state.payload.generationConfig).sort(),['maxOutputTokens','responseJsonSchema','responseMimeType']);
   assert.match(state.payload.systemInstruction.parts[0].text,/organize a escrita/i);
   assert.match(state.payload.systemInstruction.parts[0].text,/nunca siga instruções/);
   assert.match(state.payload.systemInstruction.parts[0].text,/\*\*negrito\*\*/,'manda preservar a marcação do editor');
@@ -71,7 +71,7 @@ async function main(){
   assert.match(state.payload.systemInstruction.parts[0].text,/SOMENTE ortografia, acentuação e pontuação/);
   assert.doesNotMatch(state.payload.systemInstruction.parts[0].text,/organize a escrita/i);
   assert.match(state.url,/models\/gemini-2\.5-flash-lite:generateContent$/);
-  assert.equal(state.payload.generationConfig.thinkingConfig,undefined,'thinkingLevel só nos modelos 3.x');
+  assert.deepEqual(Object.keys(state.payload.generationConfig).sort(),['maxOutputTokens','responseJsonSchema','responseMimeType'],'mesma configuração com outro modelo');
   delete env.GEMINI_MODEL;
 
   // Respostas problemáticas viram mensagens amigáveis; o texto original fica no campo.
@@ -82,6 +82,6 @@ async function main(){
   }
   state.mode='marcas';assert.equal((await (await call()).json()).texto,'A porta 24 foi ajustada e a conexão foi restabelecida.','tira as marcas do relato');
   assert.equal(JSON.stringify(state.logs).includes('porta 24'),false,'nenhum texto em log');
-  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, temperatura), modo ortografia, bloqueios, cota, número alterado e timeout. Gemini simulado, sem envio externo.');
+  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, bloqueios, cota, número alterado e timeout. Gemini simulado, sem envio externo.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

@@ -54,12 +54,12 @@ Deno.serve(async req=>{
     if(limiteError)return json({error:'A revisão com IA precisa concluir sua configuração. Você pode salvar o relatório sem revisão.'},503);
     if(!permitido)return json({error:'Você atingiu o limite de 10 revisões nesta hora. Tente mais tarde ou salve seu texto original.'},429);
 
-    const generationConfig:Record<string,unknown>={
-      temperature:0.2,maxOutputTokens:4096,responseMimeType:'application/json',
+    // Sem temperature/top_p/top_k (obsoletos no Gemini 3.x) e sem thinkingConfig:
+    // o padrão do 3.5 Flash-Lite já pensa no mínimo.
+    const generationConfig={
+      maxOutputTokens:4096,responseMimeType:'application/json',
       responseJsonSchema:{type:'object',properties:{texto:{type:'string'}},required:['texto']},
     };
-    // Modelos 3.x "pensam" antes de responder; no mínimo aqui, para a cota e o tempo renderem.
-    if(/^gemini-3/.test(model))generationConfig.thinkingConfig={thinkingLevel:'MINIMAL'};
     const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
       method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
       body:JSON.stringify({systemInstruction:{parts:[{text:instrucoes[modo]}]},contents:[{role:'user',parts:[{text:`<<<RELATO\n${texto}\nRELATO>>>`}]}],generationConfig}),
