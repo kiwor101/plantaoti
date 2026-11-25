@@ -29,13 +29,12 @@ ${fatos}`,
   ortografia:`${comum}
 Corrija SOMENTE ortografia, acentuação e pontuação. Não reescreva frases, não troque palavras por sinônimos, não mude a ordem das frases, não resuma e não acrescente nada. Se uma frase já estiver correta, mantenha-a idêntica.`,
 };
-// Tons de escrita (estilo Infradesk). Lista fechada: qualquer outro valor é recusado com 400.
-// O relato vai para o RH, então mesmo os tons leves não usam gíria nem emoji.
+// Tons de escrita (estilo Infradesk): só Profissional e Casual. Lista fechada: qualquer outro
+// valor (inclusive os antigos empatico e amigavel) é recusado com 400, antes de reservar a revisão.
+// O relato vai para o RH, então o tom casual não usa gíria nem emoji.
 const TONS:Record<string,string>={
   profissional:'Tom profissional: formal, objetivo e impessoal, com vocabulário técnico correto e frases diretas.',
-  empatico:'Tom empático: mostre consideração pelo solicitante e pelo setor atendido, reconhecendo a dificuldade que eles relataram, sem inventar sentimentos, falas ou consequências que não estejam no relato e sem pedir desculpas.',
   casual:'Tom casual: linguagem simples e direta, como numa conversa de trabalho entre colegas, mas ainda adequada para o RH: sem gírias, sem abreviações de internet e sem emojis.',
-  amigavel:'Tom amigável: cordial e acolhedor, com frases leves e positivas, mas ainda adequado para o RH: sem gírias, sem emojis e sem exclamações em excesso.',
 };
 const instrucaoTom=(tom:string)=>`${comum}
 Corrija ortografia, concordância e pontuação e reescreva o relato no tom pedido abaixo. O relato vai para o RH da Santa Casa como registro do trabalho da equipe de TI.

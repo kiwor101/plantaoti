@@ -3,7 +3,7 @@
 // - Só mexe em GET do próprio site. Supabase, login Microsoft, CDN e fontes passam direto.
 // - Sempre tenta a rede primeiro: com internet o usuário vê sempre a versão publicada.
 // - O cache serve apenas quando não há conexão.
-const CACHE = 'plantao-ti-v5';
+const CACHE = 'plantao-ti-v6';
 const OFFLINE = './offline.html';
 const PRECACHE = [OFFLINE, './confirmar.html', './icons/icon-192.png', './icons/logo-santa-casa.png', './manifest.webmanifest'];
 
