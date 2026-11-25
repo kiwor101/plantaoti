@@ -69,13 +69,16 @@ Deno.serve(async req=>{
     const chamarGemini=(limite:number)=>fetch(url,{method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},body:pedido,signal:AbortSignal.timeout(limite)});
     const lerErro=async(r:Response)=>{let codigo='';try{codigo=(await r.json())?.error?.status||'';}catch{/* sem corpo */}return {status:r.status,codigo};};
     const sobrecarregado=(e:{status:number;codigo:string})=>e.status===503||e.codigo==='UNAVAILABLE';
+    const estourou=(e:unknown)=>e instanceof DOMException&&(e.name==='TimeoutError'||e.name==='AbortError');
 
-    // 1ª tentativa com até 20 s. Se o Gemini estiver sobrecarregado (503 / UNAVAILABLE),
-    // espera 2 s e tenta UMA vez de novo com o mesmo pedido, sem reservar outra revisão.
-    let response=await chamarGemini(TENTATIVA_MS);
-    let falha=response.ok?null:await lerErro(response);
-    if(falha&&sobrecarregado(falha)){
-      console.error('Gemini sobrecarregado; nova tentativa',{status:falha.status,codigo:falha.codigo,modelo:model,modo});
+    // 1ª tentativa com até 20 s. Se o Gemini estiver sobrecarregado (503 / UNAVAILABLE) ou
+    // estourar os 20 s (o 503 às vezes só chega depois de ~23 s), espera 2 s e tenta UMA vez
+    // de novo com o mesmo pedido, sem reservar outra revisão.
+    let response:Response|null=null, falha:{status:number;codigo:string}|null=null, tempoEsgotado=false;
+    try{response=await chamarGemini(TENTATIVA_MS);falha=response.ok?null:await lerErro(response);}
+    catch(e){if(!estourou(e))throw e;tempoEsgotado=true;}
+    if(tempoEsgotado||(falha&&sobrecarregado(falha))){
+      console.error('Gemini sobrecarregado; nova tentativa',tempoEsgotado?{motivo:'tempo esgotado',limiteMs:TENTATIVA_MS,modelo:model,modo}:{status:falha!.status,codigo:falha!.codigo,modelo:model,modo});
       await new Promise(r=>setTimeout(r,ESPERA_MS));
       // 2ª tentativa: o que sobrar do tempo total da função, no máximo 20 s.
       const resta=Math.min(TENTATIVA_MS,LIMITE_TOTAL_MS-(Date.now()-inicio));
@@ -92,7 +95,8 @@ Deno.serve(async req=>{
       if(falha.status===429)return json({error:'A cota grátis da revisão com IA acabou por agora. Tente mais tarde; seu texto foi mantido.'},429);
       return json({error:'Não foi possível revisar agora. Seu texto original foi mantido.'},502);
     }
-    const result=await response.json();
+    // Aqui sempre há resposta: a 2ª tentativa que estoura o tempo cai no catch ("demorou demais").
+    const result=await response!.json();
     if(result?.promptFeedback?.blockReason){
       console.error('Gemini bloqueou o pedido',{motivo:result.promptFeedback.blockReason,modo});
       return json({error:'O Google não aceitou revisar este texto. Seu texto foi mantido; você pode salvar normalmente.'},422);

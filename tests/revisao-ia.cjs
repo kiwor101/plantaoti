@@ -112,9 +112,20 @@ async function main(){
   r=await rodada(['503','503']);
   assert.equal(r.status,503);assert.equal(r.d.error,SOBRECARGA,'503 duas vezes: mensagem de sobrecarga');
   assert.equal(state.calls,2,'só uma nova tentativa');assert.equal(state.reservas,1);
-  for(const [fila,status]of[[['429'],429],[['400'],502],[['500'],502],[['safety'],422],[['blocked'],422],[['timeout'],502]]){
+  for(const [fila,status]of[[['429'],429],[['400'],502],[['500'],502],[['safety'],422],[['blocked'],422]]){
     r=await rodada(fila);assert.equal(r.status,status,fila[0]);assert.equal(state.calls,1,`${fila[0]} não repete`);assert.deepEqual(state.esperas,[],`${fila[0]} não espera`);
   }
+  // 1ª tentativa estoura os 20 s (o 503 do Gemini às vezes só chega depois de ~23 s): tenta de novo.
+  r=await rodada(['timeout','ok'],{custo:20000});
+  assert.equal(r.status,200,'1ª estoura o tempo e a 2ª dá certo');assert.match(r.d.texto,/porta 24/);
+  assert.equal(state.calls,2);assert.equal(state.reservas,1,'tempo esgotado não reserva outra revisão');
+  assert.deepEqual(state.esperas,[2000]);assert.deepEqual(state.timeouts,[20000,20000],'20 s + 2 s de espera: sobram 22 s, a 2ª fica com 20 s');
+  assert.equal(state.logs.find(l=>l[0]==='Gemini sobrecarregado; nova tentativa')[1].motivo,'tempo esgotado');
+  r=await rodada(['timeout','timeout'],{custo:20000});
+  assert.equal(r.status,502);assert.match(r.d.error,/demorou demais/,'as duas estouram: mensagem de "demorou demais"');
+  assert.equal(state.calls,2,'só uma nova tentativa');assert.equal(state.reservas,1);
+  r=await rodada(['timeout','503'],{custo:20000});
+  assert.equal(r.status,503);assert.equal(r.d.error,SOBRECARGA,'estourou e depois 503: mensagem de sobrecarga');assert.equal(state.calls,2);
   // Tempo total: login lento (10 s) + 1ª tentativa de 19 s + 2 s de espera -> sobram 13 s dos 44 s.
   r=await rodada(['503','ok'],{custo:19000,atrasoAuth:10000});
   assert.equal(r.status,200);assert.deepEqual(state.timeouts,[20000,13000],'2ª tentativa usa só o que sobra');
@@ -122,6 +133,6 @@ async function main(){
   // Sem tempo para a 2ª tentativa: não chama de novo e avisa que demorou demais.
   r=await rodada(['503','ok'],{custo:20000,atrasoAuth:22000});
   assert.equal(r.status,502);assert.match(r.d.error,/demorou demais/);assert.equal(state.calls,1);
-  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, bloqueios, cota, número alterado, timeout e nova tentativa no 503 (uma só, sem nova reserva, dentro de 44 s). Gemini simulado, sem envio externo.');
+  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, bloqueios, cota, número alterado, timeout e nova tentativa no 503 ou no tempo esgotado (uma só, sem nova reserva, dentro de 44 s). Gemini simulado, sem envio externo.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
