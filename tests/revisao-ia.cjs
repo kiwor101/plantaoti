@@ -24,9 +24,9 @@ async function main(){
     Date:{now:()=>state.clock},
     setTimeout:(fn,ms)=>{state.esperas.push(ms);state.clock+=ms;fn();},
     AbortSignal:{timeout:ms=>{state.timeouts.push(ms);return new AbortController().signal;}},
-    console:{error:(...a)=>state.logs.push(a)},
+    console:{error:(...a)=>state.logs.push(a),log:(...a)=>state.logs.push(a)},
     fetch:async(url,options)=>{
-      state.calls++;state.url=url;state.headers=options.headers;state.payload=JSON.parse(options.body);state.clock+=state.custo;
+      state.calls++;state.url=url;(state.urls||(state.urls=[])).push(url);state.headers=options.headers;state.payload=JSON.parse(options.body);state.clock+=state.custo;
       assert.equal(JSON.stringify(state.payload).includes('nao-enviar@example.invalid'),false,'só o relato vai ao Gemini');
       const mode=state.fila.length?state.fila.shift():state.mode;
       if(mode==='503')return resposta({error:{code:503,message:'The model is overloaded.',status:'UNAVAILABLE'}},503);
@@ -120,7 +120,7 @@ async function main(){
 
   // Nova tentativa automática quando o Gemini está sobrecarregado (503 / UNAVAILABLE).
   const rodada=async(fila,{custo=0,atrasoAuth=0}={})=>{
-    Object.assign(state,{mode:'ok',fila:[...fila],calls:0,reservas:0,timeouts:[],esperas:[],clock:0,custo,atrasoAuth,logs:[]});
+    Object.assign(state,{mode:'ok',fila:[...fila],calls:0,reservas:0,timeouts:[],esperas:[],clock:0,custo,atrasoAuth,logs:[],urls:[]});
     const r=await call();return {status:r.status,d:await r.json()};
   };
   const SOBRECARGA='O Google está sobrecarregado agora. Tente de novo em instantes; seu texto foi mantido.';
@@ -157,6 +157,43 @@ async function main(){
   // Sem tempo para a 2ª tentativa: não chama de novo e avisa que demorou demais.
   r=await rodada(['503','ok'],{custo:20000,atrasoAuth:22000});
   assert.equal(r.status,502);assert.match(r.d.error,/demorou demais/);assert.equal(state.calls,1);
-  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, tons de escrita (lista fechada), bloqueios, cota, número alterado, timeout e nova tentativa no 503 ou no tempo esgotado (uma só, sem nova reserva, dentro de 44 s). Gemini simulado, sem envio externo.');
+
+  // Modelo reserva (GEMINI_MODELO_RESERVA): só na 2ª tentativa.
+  const em=m=>`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+  const respondeu=()=>state.logs.find(l=>l[0]==='Gemini respondeu')?.[1];
+  // (c) Sem o secret: a 2ª tentativa repete o principal (já coberto acima; conferido aqui pelo modelo).
+  r=await rodada(['503','ok']);
+  assert.equal(r.status,200);assert.deepEqual(state.urls,[em('gemini-3.5-flash-lite'),em('gemini-3.5-flash-lite')],'(c) sem reserva: repete o principal');
+  assert.deepEqual([respondeu().modelo,respondeu().papel,respondeu().tentativa],['gemini-3.5-flash-lite','principal',2]);
+  env.GEMINI_MODELO_RESERVA='gemini-3.1-flash-lite';
+  // (a) 503 na 1ª: a 2ª vai para o reserva, com o mesmo pedido, e conta 1 revisão.
+  r=await rodada(['503','ok']);
+  assert.equal(r.status,200,'(a) 503 -> reserva');assert.match(r.d.texto,/porta 24/);
+  assert.deepEqual(state.urls,[em('gemini-3.5-flash-lite'),em('gemini-3.1-flash-lite')],'(a) 1ª no principal, 2ª no reserva');
+  assert.equal(state.reservas,1);assert.deepEqual(state.esperas,[2000]);assert.deepEqual(state.timeouts,[20000,20000]);
+  assert.deepEqual([respondeu().modelo,respondeu().papel,respondeu().tentativa],['gemini-3.1-flash-lite','reserva',2],'log diz que o reserva respondeu');
+  assert.equal(state.logs.find(l=>l[0]==='Gemini sobrecarregado; nova tentativa')[1].novaTentativaEm,'gemini-3.1-flash-lite');
+  // (b) Tempo esgotado na 1ª: a 2ª também vai para o reserva.
+  r=await rodada(['timeout','ok'],{custo:20000});
+  assert.equal(r.status,200,'(b) tempo esgotado -> reserva');assert.deepEqual(state.urls,[em('gemini-3.5-flash-lite'),em('gemini-3.1-flash-lite')]);
+  assert.equal(state.reservas,1);assert.deepEqual(state.timeouts,[20000,20000]);
+  // Mesmo pedido nos dois modelos: marcas do relato, schema e nada de temperature/thinkingConfig.
+  assert.equal(state.payload.contents[0].parts[0].text,`<<<RELATO\n${texto}\nRELATO>>>`);
+  assert.deepEqual(Object.keys(state.payload.generationConfig).sort(),['maxOutputTokens','responseJsonSchema','responseMimeType']);
+  // Reserva também sobrecarregado: mensagem de sobrecarga, log com o reserva.
+  r=await rodada(['503','503']);
+  assert.equal(r.status,503);assert.equal(r.d.error,SOBRECARGA);assert.equal(state.logs.find(l=>l[0]==='Gemini sobrecarregado de novo; desistiu')[1].modelo,'gemini-3.1-flash-lite');
+  // Sem sobrecarga, o reserva nunca é usado.
+  r=await rodada(['ok']);assert.deepEqual(state.urls,[em('gemini-3.5-flash-lite')]);assert.equal(respondeu().papel,'principal');
+  // Números conferidos também na resposta do reserva.
+  r=await rodada(['503','number']);assert.equal(r.status,422,'reserva que muda número é descartado');
+  // Secret inválido ou igual ao principal: ignorado, a 2ª repete o principal.
+  for(const ruim of ['gemini 3.1','GEMINI-3.1-FLASH-LITE','gpt-4o-mini','gemini-3.1/../x','gemini-3.5-flash-lite','']){
+    env.GEMINI_MODELO_RESERVA=ruim;r=await rodada(['503','ok']);
+    assert.equal(r.status,200,ruim);assert.deepEqual(state.urls,[em('gemini-3.5-flash-lite'),em('gemini-3.5-flash-lite')],`reserva "${ruim}" ignorado`);
+  }
+  delete env.GEMINI_MODELO_RESERVA;
+  assert.equal(JSON.stringify(state.logs).includes('porta 24'),false,'nenhum texto em log');
+  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, tons de escrita (lista fechada), bloqueios, cota, número alterado, timeout, nova tentativa no 503 ou no tempo esgotado (uma só, sem nova reserva, dentro de 44 s) e modelo reserva na 2ª tentativa. Gemini simulado, sem envio externo.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
