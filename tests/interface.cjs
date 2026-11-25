@@ -114,7 +114,8 @@ async function main() {
     assert.equal(await page.locator('.etapas button').nth(2).getAttribute('aria-label'),'Relato, concluído');
     await page.locator('#hMelhorarIA').click();
     assert.equal(await page.locator('#hMelhorarIA').getAttribute('aria-expanded'),'true');
-    assert.deepEqual(await page.locator('#hIAMenu [role=menuitem]').evaluateAll(b=>b.map(x=>x.firstChild.textContent)),['Melhorar texto','Só corrigir ortografia','Profissional','Empático','Casual','Amigável','Texto original']);
+    assert.deepEqual(await page.locator('#hIAMenu [role=menuitem]').evaluateAll(b=>b.map(x=>x.firstChild.textContent)),['Melhorar texto','Só corrigir ortografia','Profissional','Casual','Texto original'],'menu enxuto: só Profissional e Casual nos tons');
+    assert.deepEqual(await page.locator('#hIAMenu small').allInnerTexts(),['Volta ao texto de antes da revisão'],'só "Texto original" tem descrição');
     assert.equal(await page.locator('#hIATons').innerText(),'Tons de escrita');
     assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'"Texto original" desabilitado sem revisão aplicada');
     await page.keyboard.press('Escape');
@@ -149,7 +150,7 @@ async function main() {
     await tomIA('profissional');
     assert.deepEqual(await page.evaluate(()=>{const {modo,tom}=testState.aiPedidos.at(-1);return {modo,tom};}),{modo:'tom',tom:'profissional'},'tom vai para a função');
     assert.match(await page.locator('#hIAMensagem').innerText(),/tom Profissional/);
-    await tomIA('casual');await tomIA('amigavel');
+    await tomIA('casual');await tomIA('profissional');
     assert.equal(await page.evaluate(()=>testState.aiPedidos.at(-1).texto),'Relato reescrito no tom casual.','o 2º tom parte do texto do 1º');
     await page.locator('#hMelhorarIA').click();
     assert.equal(await page.locator('#hIAOriginal').isEnabled(),true,'"Texto original" habilitado depois da revisão');
@@ -158,7 +159,7 @@ async function main() {
     assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'"Texto original" volta ao texto da pessoa, mesmo depois de 3 tons');
     assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);assert.equal(await page.locator('#hIAOriginal').isDisabled(),true);
     // "Desfazer" ao lado da mensagem também volta ao original da sequência.
-    await tomIA('empatico');await tomIA('profissional');await page.locator('#hDesfazerIA').click();
+    await tomIA('casual');await tomIA('profissional');await page.locator('#hDesfazerIA').click();
     assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'Desfazer volta ao original, não só 1 passo');
     // Editar à mão zera o "Texto original".
     await tomIA('casual');await page.locator('#hSolucao').press('End');await page.keyboard.type(' Ajuste manual.');

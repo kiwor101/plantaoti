@@ -57,7 +57,7 @@ Publique **`index.html` e `relatorios.js` juntos**, no mesmo diretório, em hosp
 O botão **Melhorar texto ▾** abre um menu no estilo do Infradesk:
 - **Melhorar texto:** reescreve com mais clareza, sem mudar os fatos.
 - **Só corrigir ortografia:** acentos e pontuação, sem reescrever.
-- **Tons de escrita:** Profissional, Empático, Casual e Amigável. É uma lista fechada, e qualquer outro valor é recusado. Como o relato vai para o RH, os tons leves não usam gíria nem emoji.
+- **Tons de escrita:** Profissional e Casual. É uma lista fechada, e qualquer outro valor é recusado com 400, inclusive os antigos `empatico` e `amigavel`. Como o relato vai para o RH, o tom casual não usa gíria nem emoji.
 - **Texto original:** volta ao que a pessoa escreveu antes da 1ª revisão, mesmo depois de vários tons seguidos.
 
 A Edge Function `revisar-relatorio` envia **somente o texto do relato** ao Gemini (Google AI Studio, plano grátis). O resultado troca o relato direto no campo. O "Texto original" e o botão **Desfazer (voltar ao meu texto)** ficam disponíveis até a pessoa editar à mão ou salvar. Cada revisão, inclusive cada tom, conta 1 no limite por hora.
