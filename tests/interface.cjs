@@ -41,7 +41,7 @@ async function main() {
         }};return q;
       },
       functions:{invoke:async(name,{body})=>{
-        if(name==='revisar-relatorio'){testState.aiCalls++;(testState.aiModos||(testState.aiModos=[])).push(body.modo);if(window.failAI)return {error:new Error('IA indisponível')};if(window.deferAI)await new Promise(resolve=>window.finishAI=resolve);return {data:{texto:body.modo==='ortografia'?'Fiz ajuste na rede e voltou a funcionar.':'Foi realizado o ajuste de rede, com restabelecimento da conexão.'}};}
+        if(name==='revisar-relatorio'){testState.aiCalls++;(testState.aiModos||(testState.aiModos=[])).push(body.modo);(testState.aiPedidos||(testState.aiPedidos=[])).push(body.modo==='tom'?{modo:body.modo,tom:body.tom}:{modo:body.modo});testState.aiPedidos.at(-1).texto=body.texto;if(body.modo==='tom'&&!window.failAI)return {data:{texto:'Relato reescrito no tom '+body.tom+'.'}};if(window.failAI)return {error:new Error('IA indisponível')};if(window.deferAI)await new Promise(resolve=>window.finishAI=resolve);return {data:{texto:body.modo==='ortografia'?'Fiz ajuste na rede e voltou a funcionar.':'Foi realizado o ajuste de rede, com restabelecimento da conexão.'}};}
         if(body.acao==='config')return {data:{destinatarios:['rh@example.invalid'],remetente:'teste@example.invalid'}};
         if(body.acao==='pdf')return {data:{arquivo:'teste.pdf',base64:btoa('%PDF-1.4 teste')}};
         if(body.acao==='lembrete'){testState.lembretes.push(body.relatorio_id);const r=testState.reports.find(r=>r.id===body.relatorio_id);r.lembretes++;r.ultimo_lembrete_em=new Date().toISOString();persist();return {data:{id:r.id,estado:'lembrete'}};}
@@ -114,11 +114,15 @@ async function main() {
     assert.equal(await page.locator('.etapas button').nth(2).getAttribute('aria-label'),'Relato, concluído');
     await page.locator('#hMelhorarIA').click();
     assert.equal(await page.locator('#hMelhorarIA').getAttribute('aria-expanded'),'true');
-    assert.deepEqual(await page.locator('#hIAMenu [role=menuitem]').evaluateAll(b=>b.map(x=>x.firstChild.textContent)),['Melhorar texto','Só corrigir ortografia']);
+    assert.deepEqual(await page.locator('#hIAMenu [role=menuitem]').evaluateAll(b=>b.map(x=>x.firstChild.textContent)),['Melhorar texto','Só corrigir ortografia','Profissional','Empático','Casual','Amigável','Texto original']);
+    assert.equal(await page.locator('#hIATons').innerText(),'Tons de escrita');
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'"Texto original" desabilitado sem revisão aplicada');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#hIAMenu').isHidden(),true,'Esc fecha o menu');
-    await page.setViewportSize({width:390,height:844});await page.locator('#hMelhorarIA').click();
-    assert.equal(await page.evaluate(()=>{const r=document.getElementById('hIAMenu').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth;}),true,'menu cabe no celular');
+    // Celular baixo (iPhone SE): o menu maior cabe na largura e rola na altura.
+    await page.setViewportSize({width:375,height:667});await page.locator('#hSolucao').scrollIntoViewIfNeeded();await page.locator('#hMelhorarIA').click();
+    assert.equal(await page.evaluate(()=>{const m=document.getElementById('hIAMenu'),r=m.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth&&m.clientHeight<=Math.min(innerHeight*.7,440)+1&&getComputedStyle(m).overflowY==='auto';}),true,'menu cabe no celular, com rolagem');
+    await page.locator('#hIAOriginal').scrollIntoViewIfNeeded();assert.equal(await page.locator('#hIAOriginal').isVisible(),true,'"Texto original" alcançável rolando o menu');
     await page.locator('#hIAMenu').screenshot({path:path.join(review,'ia-menu-celular.png')});
     await page.keyboard.press('Escape');await page.setViewportSize({width:1440,height:1000});
     await page.evaluate(()=>window.failAI=true);await menuIA('melhorar');
@@ -138,6 +142,32 @@ async function main() {
     assert.equal(await page.locator('#hSolucao').inputValue(),'Fiz ajuste na rede e voltou a funcionar.');
     await page.locator('#hSolucao').press('End');await page.keyboard.type(' Testado.');
     assert.equal(await page.locator('#hDesfazerIA').isVisible(),false,'editar de novo tira o Desfazer');
+    // Tons seguidos: "Texto original" volta ao que a pessoa escreveu ANTES da 1ª revisão da sequência.
+    const meuTexto=await page.locator('#hSolucao').inputValue();
+    const tomIA=async tom=>{await page.locator('#hMelhorarIA').click();await page.locator(`[data-ia-tom="${tom}"]`).click();
+      await page.waitForFunction(t=>document.getElementById('hSolucao').value===`Relato reescrito no tom ${t}.`,tom);};
+    await tomIA('profissional');
+    assert.deepEqual(await page.evaluate(()=>{const {modo,tom}=testState.aiPedidos.at(-1);return {modo,tom};}),{modo:'tom',tom:'profissional'},'tom vai para a função');
+    assert.match(await page.locator('#hIAMensagem').innerText(),/tom Profissional/);
+    await tomIA('casual');await tomIA('amigavel');
+    assert.equal(await page.evaluate(()=>testState.aiPedidos.at(-1).texto),'Relato reescrito no tom casual.','o 2º tom parte do texto do 1º');
+    await page.locator('#hMelhorarIA').click();
+    assert.equal(await page.locator('#hIAOriginal').isEnabled(),true,'"Texto original" habilitado depois da revisão');
+    await page.screenshot({path:path.join(review,'ia-menu-tons.png'),fullPage:false});
+    await page.locator('#hIAOriginal').click();
+    assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'"Texto original" volta ao texto da pessoa, mesmo depois de 3 tons');
+    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);assert.equal(await page.locator('#hIAOriginal').isDisabled(),true);
+    // "Desfazer" ao lado da mensagem também volta ao original da sequência.
+    await tomIA('empatico');await tomIA('profissional');await page.locator('#hDesfazerIA').click();
+    assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'Desfazer volta ao original, não só 1 passo');
+    // Editar à mão zera o "Texto original".
+    await tomIA('casual');await page.locator('#hSolucao').press('End');await page.keyboard.type(' Ajuste manual.');
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'editar à mão zera o "Texto original"');
+    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
+    // Depois de editar, a próxima revisão começa uma sequência nova a partir do texto editado.
+    const editado=await page.locator('#hSolucao').inputValue();
+    await tomIA('profissional');await page.locator('#hMelhorarIA').click();await page.locator('#hIAOriginal').click();
+    assert.equal(await page.locator('#hSolucao').inputValue(),editado,'nova sequência guarda o texto editado');
     await menuIA('melhorar');await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Texto revisado no relato'));
     await page.screenshot({path:path.join(review,'ia-desfazer.png'),fullPage:false});
     assert.equal(await page.evaluate(()=>testState.rows.length),2,'IA não salva atendimento');
