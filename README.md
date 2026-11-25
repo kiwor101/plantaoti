@@ -59,7 +59,7 @@ O botão **Melhorar texto ▾** abre um menu com dois modos: **Melhorar texto** 
 Proteções da função:
 - Exige sessão válida (`auth.getUser`) e perfil.
 - Aceita relatos de 20 a 5.000 caracteres e no máximo 10 revisões por hora por usuário (tabela `uso_revisao_ia` e RPC `reservar_revisao_ia`, só `service_role`).
-- Tempo limite de 30 s.
+- Tempo limite de 20 s por tentativa. Se o Gemini responder 503 / `UNAVAILABLE` (sobrecarregado, comum no plano grátis), espera 2 s e tenta **uma** vez de novo, sem reservar outra revisão e sem passar de ~44 s no total. Se falhar de novo, mostra "O Google está sobrecarregado agora…".
 - Descarta a resposta se algum número do relato mudar.
 - Não registra o texto em log.
 - O prompt manda preservar fatos, números e a marcação do editor, e ignorar instruções escritas dentro do relato. Isso é orientação ao modelo, não garantia, por isso a pessoa confere antes de salvar.

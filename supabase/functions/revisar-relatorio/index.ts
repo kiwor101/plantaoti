@@ -29,10 +29,14 @@ Corrija SOMENTE ortografia, acentuação e pontuação. Não reescreva frases, n
 };
 // Cada finishReason do Gemini que não é STOP vira uma mensagem amigável; o texto original fica no campo.
 const BLOQUEIO=['SAFETY','PROHIBITED_CONTENT','BLOCKLIST','SPII','RECITATION','IMAGE_SAFETY'];
+// Tempos: cada tentativa no Gemini tem até 20 s; entre elas, 2 s de espera; a função
+// toda (desde que o pedido chegou) não passa de ~44 s.
+const TENTATIVA_MS=20000, ESPERA_MS=2000, LIMITE_TOTAL_MS=44000;
 
 Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers});
   if(req.method!=='POST')return json({error:'Método não permitido.'},405);
+  const inicio=Date.now();
   try{
     const token=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'');
     if(!token)return json({error:'Entre novamente para solicitar a revisão.'},401);
@@ -60,15 +64,32 @@ Deno.serve(async req=>{
       maxOutputTokens:4096,responseMimeType:'application/json',
       responseJsonSchema:{type:'object',properties:{texto:{type:'string'}},required:['texto']},
     };
-    const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
-      method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
-      body:JSON.stringify({systemInstruction:{parts:[{text:instrucoes[modo]}]},contents:[{role:'user',parts:[{text:`<<<RELATO\n${texto}\nRELATO>>>`}]}],generationConfig}),
-      signal:AbortSignal.timeout(30000),
-    });
-    if(!response.ok){
-      let codigo='';try{codigo=(await response.json())?.error?.status||'';}catch{/* sem corpo */}
-      console.error('Gemini recusou',{status:response.status,codigo,modelo:model,modo});
-      if(response.status===429)return json({error:'A cota grátis da revisão com IA acabou por agora. Tente mais tarde; seu texto foi mantido.'},429);
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const pedido=JSON.stringify({systemInstruction:{parts:[{text:instrucoes[modo]}]},contents:[{role:'user',parts:[{text:`<<<RELATO\n${texto}\nRELATO>>>`}]}],generationConfig});
+    const chamarGemini=(limite:number)=>fetch(url,{method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},body:pedido,signal:AbortSignal.timeout(limite)});
+    const lerErro=async(r:Response)=>{let codigo='';try{codigo=(await r.json())?.error?.status||'';}catch{/* sem corpo */}return {status:r.status,codigo};};
+    const sobrecarregado=(e:{status:number;codigo:string})=>e.status===503||e.codigo==='UNAVAILABLE';
+
+    // 1ª tentativa com até 20 s. Se o Gemini estiver sobrecarregado (503 / UNAVAILABLE),
+    // espera 2 s e tenta UMA vez de novo com o mesmo pedido, sem reservar outra revisão.
+    let response=await chamarGemini(TENTATIVA_MS);
+    let falha=response.ok?null:await lerErro(response);
+    if(falha&&sobrecarregado(falha)){
+      console.error('Gemini sobrecarregado; nova tentativa',{status:falha.status,codigo:falha.codigo,modelo:model,modo});
+      await new Promise(r=>setTimeout(r,ESPERA_MS));
+      // 2ª tentativa: o que sobrar do tempo total da função, no máximo 20 s.
+      const resta=Math.min(TENTATIVA_MS,LIMITE_TOTAL_MS-(Date.now()-inicio));
+      if(resta<1000)throw new DOMException('Sem tempo para nova tentativa','TimeoutError');
+      response=await chamarGemini(resta);
+      falha=response.ok?null:await lerErro(response);
+      if(falha&&sobrecarregado(falha)){
+        console.error('Gemini sobrecarregado de novo; desistiu',{status:falha.status,codigo:falha.codigo,modelo:model,modo});
+        return json({error:'O Google está sobrecarregado agora. Tente de novo em instantes; seu texto foi mantido.'},503);
+      }
+    }
+    if(falha){
+      console.error('Gemini recusou',{status:falha.status,codigo:falha.codigo,modelo:model,modo});
+      if(falha.status===429)return json({error:'A cota grátis da revisão com IA acabou por agora. Tente mais tarde; seu texto foi mantido.'},429);
       return json({error:'Não foi possível revisar agora. Seu texto original foi mantido.'},502);
     }
     const result=await response.json();
