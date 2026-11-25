@@ -41,7 +41,7 @@ async function main() {
         }};return q;
       },
       functions:{invoke:async(name,{body})=>{
-        if(name==='revisar-relatorio'){testState.aiCalls++;if(window.failAI)return {error:new Error('IA indisponível')};if(window.deferAI)await new Promise(resolve=>window.finishAI=resolve);return {data:{texto:'Foi realizado o ajuste de rede, com restabelecimento da conexão.'}};}
+        if(name==='revisar-relatorio'){testState.aiCalls++;(testState.aiModos||(testState.aiModos=[])).push(body.modo);if(window.failAI)return {error:new Error('IA indisponível')};if(window.deferAI)await new Promise(resolve=>window.finishAI=resolve);return {data:{texto:body.modo==='ortografia'?'Fiz ajuste na rede e voltou a funcionar.':'Foi realizado o ajuste de rede, com restabelecimento da conexão.'}};}
         if(body.acao==='config')return {data:{destinatarios:['rh@example.invalid'],remetente:'teste@example.invalid'}};
         if(body.acao==='pdf')return {data:{arquivo:'teste.pdf',base64:btoa('%PDF-1.4 teste')}};
         if(body.acao==='lembrete'){testState.lembretes.push(body.relatorio_id);const r=testState.reports.find(r=>r.id===body.relatorio_id);r.lembretes++;r.ultimo_lembrete_em=new Date().toISOString();persist();return {data:{id:r.id,estado:'lembrete'}};}
@@ -101,19 +101,45 @@ async function main() {
     assert.doesNotMatch(await page.locator('#hPrevia').innerText(),/pausa/i);
     assert.match(await page.locator('#hPrevia').innerText(),/0h 30min/);
 
-    // IA (sem mudanças): não troca o texto sozinha e não salva.
-    await page.locator('#hSolucao').fill('rede');await page.locator('#hMelhorarIA').click();
+    // IA: menu "Melhorar texto ▾" com dois modos; troca direto no relato, com "Desfazer".
+    const menuIA=async modo=>{await page.locator('#hMelhorarIA').click();await page.locator(`[data-ia-modo="${modo}"]`).click();};
+    assert.match(await page.locator('.horas-nota-ia').innerText(),/enviado ao Google \(Gemini\).*Não escreva nome de paciente/);
+    assert.equal(await page.locator('.horas-nota-ia').isVisible(),true,'aviso de privacidade visível');
+    assert.equal(await page.locator('#hIASugestao').count(),0,'sem a caixa separada de sugestão');
+    await page.locator('#hSolucao').fill('rede');await menuIA('melhorar');
     assert.match(await page.locator('#hIAMensagem').innerText(),/pelo menos 20 caracteres/);
+    assert.equal(await page.locator('#hIAMenu').isHidden(),true,'menu fecha depois de escolher');
     const original='fiz ajuste na rede e voltou a funcionar';
     await page.locator('#hSolucao').fill(original);
     assert.equal(await page.locator('.etapas button').nth(2).getAttribute('aria-label'),'Relato, concluído');
-    await page.evaluate(()=>window.failAI=true);await page.locator('#hMelhorarIA').click();
+    await page.locator('#hMelhorarIA').click();
+    assert.equal(await page.locator('#hMelhorarIA').getAttribute('aria-expanded'),'true');
+    assert.deepEqual(await page.locator('#hIAMenu [role=menuitem]').evaluateAll(b=>b.map(x=>x.firstChild.textContent)),['Melhorar texto','Só corrigir ortografia']);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#hIAMenu').isHidden(),true,'Esc fecha o menu');
+    await page.setViewportSize({width:390,height:844});await page.locator('#hMelhorarIA').click();
+    assert.equal(await page.evaluate(()=>{const r=document.getElementById('hIAMenu').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth;}),true,'menu cabe no celular');
+    await page.locator('#hIAMenu').screenshot({path:path.join(review,'ia-menu-celular.png')});
+    await page.keyboard.press('Escape');await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>window.failAI=true);await menuIA('melhorar');
     await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('ainda não está disponível'));
-    assert.equal(await page.locator('#hSolucao').inputValue(),original);
-    await page.evaluate(()=>window.failAI=false);await page.locator('#hMelhorarIA').click();
-    await page.locator('#hIASugestao').waitFor({state:'visible'});
-    assert.equal(await page.locator('#hSolucao').inputValue(),original,'IA não substitui automaticamente');
-    await page.locator('#hUsarIA').click();assert.match(await page.locator('#hSolucao').inputValue(),/Foi realizado o ajuste/);
+    assert.equal(await page.locator('#hSolucao').inputValue(),original,'erro da IA mantém o texto');
+    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
+    await page.evaluate(()=>window.failAI=false);await menuIA('melhorar');
+    await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Texto revisado no relato'));
+    assert.match(await page.locator('#hSolucao').inputValue(),/Foi realizado o ajuste/,'troca direto no campo');
+    assert.equal(await page.evaluate(()=>testState.aiModos.at(-1)),'melhorar');
+    await page.locator('#hDesfazerIA').click();
+    assert.equal(await page.locator('#hSolucao').inputValue(),original,'Desfazer volta ao texto anterior');
+    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
+    await menuIA('ortografia');
+    await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Ortografia corrigida'));
+    assert.equal(await page.evaluate(()=>testState.aiModos.at(-1)),'ortografia');
+    assert.equal(await page.locator('#hSolucao').inputValue(),'Fiz ajuste na rede e voltou a funcionar.');
+    await page.locator('#hSolucao').press('End');await page.keyboard.type(' Testado.');
+    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false,'editar de novo tira o Desfazer');
+    await menuIA('melhorar');await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Texto revisado no relato'));
+    await page.screenshot({path:path.join(review,'ia-desfazer.png'),fullPage:false});
     assert.equal(await page.evaluate(()=>testState.rows.length),2,'IA não salva atendimento');
 
     // Validações do envio do formulário.
