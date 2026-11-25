@@ -46,6 +46,8 @@ const BLOQUEIO=['SAFETY','PROHIBITED_CONTENT','BLOCKLIST','SPII','RECITATION','I
 // Tempos: cada tentativa no Gemini tem até 20 s; entre elas, 2 s de espera; a função
 // toda (desde que o pedido chegou) não passa de ~44 s.
 const TENTATIVA_MS=20000, ESPERA_MS=2000, LIMITE_TOTAL_MS=44000;
+// Nome de modelo aceito nos segredos (ex.: gemini-3.1-flash-lite).
+const NOME_MODELO=/^gemini-[a-z0-9.-]+$/;
 
 Deno.serve(async req=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers});
@@ -83,9 +85,14 @@ Deno.serve(async req=>{
       maxOutputTokens:4096,responseMimeType:'application/json',
       responseJsonSchema:{type:'object',properties:{texto:{type:'string'}},required:['texto']},
     };
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    // Modelo reserva (opcional): usado só na 2ª tentativa, quando o principal está sobrecarregado.
+    // Nome inválido ou igual ao principal é ignorado (a 2ª tentativa repete o principal).
+    const reservaBruta=(Deno.env.get('GEMINI_MODELO_RESERVA')||'').trim();
+    const reserva=NOME_MODELO.test(reservaBruta)&&reservaBruta!==model?reservaBruta:null;
+    if(reservaBruta&&!reserva&&reservaBruta!==model)console.error('GEMINI_MODELO_RESERVA inválido; ignorado',{tamanho:reservaBruta.length});
     const pedido=JSON.stringify({systemInstruction:{parts:[{text:instrucao}]},contents:[{role:'user',parts:[{text:`<<<RELATO\n${texto}\nRELATO>>>`}]}],generationConfig});
-    const chamarGemini=(limite:number)=>fetch(url,{method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},body:pedido,signal:AbortSignal.timeout(limite)});
+    const chamarGemini=(modelo:string,limite:number)=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`,
+      {method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},body:pedido,signal:AbortSignal.timeout(limite)});
     const lerErro=async(r:Response)=>{let codigo='';try{codigo=(await r.json())?.error?.status||'';}catch{/* sem corpo */}return {status:r.status,codigo};};
     const sobrecarregado=(e:{status:number;codigo:string})=>e.status===503||e.codigo==='UNAVAILABLE';
     const estourou=(e:unknown)=>e instanceof DOMException&&(e.name==='TimeoutError'||e.name==='AbortError');
@@ -94,36 +101,39 @@ Deno.serve(async req=>{
     // estourar os 20 s (o 503 às vezes só chega depois de ~23 s), espera 2 s e tenta UMA vez
     // de novo com o mesmo pedido, sem reservar outra revisão.
     let response:Response|null=null, falha:{status:number;codigo:string}|null=null, tempoEsgotado=false;
-    try{response=await chamarGemini(TENTATIVA_MS);falha=response.ok?null:await lerErro(response);}
+    let modeloUsado=model, papel:'principal'|'reserva'='principal', tentativa=1;
+    try{response=await chamarGemini(model,TENTATIVA_MS);falha=response.ok?null:await lerErro(response);}
     catch(e){if(!estourou(e))throw e;tempoEsgotado=true;}
     if(tempoEsgotado||(falha&&sobrecarregado(falha))){
-      console.error('Gemini sobrecarregado; nova tentativa',tempoEsgotado?{motivo:'tempo esgotado',limiteMs:TENTATIVA_MS,modelo:model,modo,tom}:{status:falha!.status,codigo:falha!.codigo,modelo:model,modo,tom});
+      // 2ª tentativa no modelo reserva, se houver; senão, repete o principal.
+      tentativa=2;if(reserva){modeloUsado=reserva;papel='reserva';}
+      console.error('Gemini sobrecarregado; nova tentativa',{...(tempoEsgotado?{motivo:'tempo esgotado',limiteMs:TENTATIVA_MS}:{status:falha!.status,codigo:falha!.codigo}),modelo:model,novaTentativaEm:modeloUsado,papel,modo,tom});
       await new Promise(r=>setTimeout(r,ESPERA_MS));
       // 2ª tentativa: o que sobrar do tempo total da função, no máximo 20 s.
       const resta=Math.min(TENTATIVA_MS,LIMITE_TOTAL_MS-(Date.now()-inicio));
       if(resta<1000)throw new DOMException('Sem tempo para nova tentativa','TimeoutError');
-      response=await chamarGemini(resta);
+      response=await chamarGemini(modeloUsado,resta);
       falha=response.ok?null:await lerErro(response);
       if(falha&&sobrecarregado(falha)){
-        console.error('Gemini sobrecarregado de novo; desistiu',{status:falha.status,codigo:falha.codigo,modelo:model,modo,tom});
+        console.error('Gemini sobrecarregado de novo; desistiu',{status:falha.status,codigo:falha.codigo,modelo:modeloUsado,papel,modo,tom});
         return json({error:'O Google está sobrecarregado agora. Tente de novo em instantes; seu texto foi mantido.'},503);
       }
     }
     if(falha){
-      console.error('Gemini recusou',{status:falha.status,codigo:falha.codigo,modelo:model,modo,tom});
+      console.error('Gemini recusou',{status:falha.status,codigo:falha.codigo,modelo:modeloUsado,papel,modo,tom});
       if(falha.status===429)return json({error:'A cota grátis da revisão com IA acabou por agora. Tente mais tarde; seu texto foi mantido.'},429);
       return json({error:'Não foi possível revisar agora. Seu texto original foi mantido.'},502);
     }
     // Aqui sempre há resposta: a 2ª tentativa que estoura o tempo cai no catch ("demorou demais").
     const result=await response!.json();
     if(result?.promptFeedback?.blockReason){
-      console.error('Gemini bloqueou o pedido',{motivo:result.promptFeedback.blockReason,modo,tom});
+      console.error('Gemini bloqueou o pedido',{motivo:result.promptFeedback.blockReason,modelo:modeloUsado,papel,modo,tom});
       return json({error:'O Google não aceitou revisar este texto. Seu texto foi mantido; você pode salvar normalmente.'},422);
     }
     const candidato=result?.candidates?.[0];
     if(!candidato)return json({error:'A revisão não devolveu resposta. Seu texto foi mantido.'},502);
     if(candidato.finishReason&&candidato.finishReason!=='STOP'){
-      console.error('Gemini não concluiu',{finishReason:candidato.finishReason,modo,tom});
+      console.error('Gemini não concluiu',{finishReason:candidato.finishReason,modelo:modeloUsado,papel,modo,tom});
       if(candidato.finishReason==='MAX_TOKENS')return json({error:'O texto ficou longo demais para revisar de uma vez. Seu texto foi mantido.'},422);
       if(BLOQUEIO.includes(candidato.finishReason))return json({error:'O Google não revisou este texto (filtro de conteúdo). Seu texto foi mantido; você pode salvar normalmente.'},422);
       return json({error:'A revisão não foi concluída. Seu texto original foi mantido.'},502);
@@ -136,6 +146,8 @@ Deno.serve(async req=>{
     // Complementa o prompt: números informados no relato não podem ser inventados ou alterados.
     const numeros=(s:string)=>(s.match(/\d+(?:[.,:/-]\d+)*/g)||[]).sort().join('|');
     if(numeros(texto)!==numeros(final))return json({error:'A sugestão alterou informações numéricas e foi descartada. Seu texto original foi mantido.'},422);
+    // Registra qual modelo respondeu (nunca o texto).
+    console.log('Gemini respondeu',{modelo:modeloUsado,papel,tentativa,modo,tom});
     return json({texto:final});
   }catch(e){
     const tempo=e instanceof DOMException&&(e.name==='TimeoutError'||e.name==='AbortError');

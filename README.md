@@ -74,6 +74,9 @@ Proteções da função:
 ### Publicar
 1. No [Google AI Studio](https://aistudio.google.com), crie uma chave de API e cadastre como `GEMINI_API_KEY` em Supabase → Edge Functions → Secrets. Nunca coloque a chave no repositório nem no front.
 2. `GEMINI_MODEL` é opcional. O padrão é `gemini-3.5-flash-lite`, o Flash-Lite estável e gratuito do AI Studio em novembro de 2026.
+   - `GEMINI_MODELO_RESERVA` também é opcional. É usado só na 2ª tentativa, quando o principal está sobrecarregado (503 ou tempo esgotado). O sugerido é `gemini-3.1-flash-lite`, que também é estável e gratuito.
+   - O nome precisa seguir `^gemini-[a-z0-9.-]+$`. Inválido ou igual ao principal, ele é ignorado, e a 2ª tentativa repete o principal.
+   - O log registra qual modelo respondeu (`principal` ou `reserva`).
 3. Publique `supabase/functions/revisar-relatorio/index.ts` como `revisar-relatorio`, com **Verify JWT desligado**, porque a própria função confere a sessão. Pelo CLI: `supabase functions deploy revisar-relatorio --no-verify-jwt --project-ref <projeto>`.
 4. Sem `GEMINI_API_KEY`, a função responde "A revisão com IA ainda não foi ativada" e nada é enviado ao Google.
 
