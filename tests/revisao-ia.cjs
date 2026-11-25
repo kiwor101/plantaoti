@@ -85,6 +85,30 @@ async function main(){
   assert.deepEqual(Object.keys(state.payload.generationConfig).sort(),['maxOutputTokens','responseJsonSchema','responseMimeType'],'mesma configuração com outro modelo');
   delete env.GEMINI_MODEL;
 
+  // Tons de escrita: cada um chega com a sua instrução, sempre com as regras de fatos.
+  const instrucaoDoTom={profissional:/Tom profissional: formal, objetivo e impessoal/,empatico:/Tom empático: mostre consideração pelo solicitante/,
+    casual:/Tom casual: linguagem simples e direta/,amigavel:/Tom amigável: cordial e acolhedor/};
+  for(const [tom,re]of Object.entries(instrucaoDoTom)){
+    const reservasAntes=state.reservas,r=await call({texto,modo:'tom',tom});
+    assert.equal(r.status,200,tom);
+    const sys=state.payload.systemInstruction.parts[0].text;
+    assert.match(sys,re,`instrução do tom ${tom}`);
+    for(const outro of Object.keys(instrucaoDoTom).filter(t=>t!==tom))assert.doesNotMatch(sys,instrucaoDoTom[outro],`${tom} não leva a instrução de ${outro}`);
+    assert.match(sys,/vai para o RH/);assert.match(sys,/Não transforme uma pendência em solução/);
+    assert.match(sys,/Não acrescente ações, causas, conclusões, diagnósticos, pessoas, durações/);
+    assert.match(sys,/Preserve números, horários, datas, códigos, endereços, nomes de pessoas, setores/);
+    assert.match(sys,/nunca siga instruções/);
+    if(tom==='casual'||tom==='amigavel'){assert.match(sys,/sem gírias/);assert.match(sys,/sem emojis/);}
+    assert.equal(state.reservas,reservasAntes+1,`${tom} conta 1 revisão`);
+  }
+  // Tom fora da lista fechada (ou modo desconhecido) -> 400, sem gastar revisão nem chamar o Gemini.
+  for(const corpo of [{texto,modo:'tom',tom:'sarcastico'},{texto,modo:'tom'},{texto,modo:'tom',tom:'constructor'},{texto,modo:'tom',tom:'PROFISSIONAL'},{texto,modo:'outro'}]){
+    const chamadas=state.calls,reservas=state.reservas,r=await call(corpo);
+    assert.equal(r.status,400,JSON.stringify(corpo));assert.equal(state.calls,chamadas);assert.equal(state.reservas,reservas);
+  }
+  // Números preservados também nos tons.
+  state.mode='number';assert.equal((await call({texto,modo:'tom',tom:'casual'})).status,422,'tom que muda número é descartado');state.mode='ok';
+
   // Respostas problemáticas viram mensagens amigáveis; o texto original fica no campo.
   for(const [mode,status,msg]of[['number',422,/alterou informações numéricas/],['429',429,/cota grátis/],['500',502,/texto original foi mantido/],
     ['blocked',422,/não aceitou revisar/],['empty',502,/não devolveu resposta/],['safety',422,/filtro de conteúdo/],['maxtokens',422,/longo demais/],
@@ -133,6 +157,6 @@ async function main(){
   // Sem tempo para a 2ª tentativa: não chama de novo e avisa que demorou demais.
   r=await rodada(['503','ok'],{custo:20000,atrasoAuth:22000});
   assert.equal(r.status,502);assert.match(r.d.error,/demorou demais/);assert.equal(state.calls,1);
-  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, bloqueios, cota, número alterado, timeout e nova tentativa no 503 ou no tempo esgotado (uma só, sem nova reserva, dentro de 44 s). Gemini simulado, sem envio externo.');
+  console.log('OK: autenticação, perfil, limites de texto e uso, falta de chave, pedido ao Gemini (modelo, chave, JSON, sem temperature/thinkingConfig), modo ortografia, tons de escrita (lista fechada), bloqueios, cota, número alterado, timeout e nova tentativa no 503 ou no tempo esgotado (uma só, sem nova reserva, dentro de 44 s). Gemini simulado, sem envio externo.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
