@@ -20,11 +20,11 @@
     .horas-total{font-variant-numeric:tabular-nums;margin:16px 0 8px;padding:11px 13px;background:var(--brand-soft);border-radius:8px;color:var(--brand);font-weight:600}
     #horasForm>label:first-of-type{margin-top:10px}#hSolucao{min-height:170px}
     .horas-ia-linha{display:flex;justify-content:flex-end;margin-top:-47px;position:relative;padding:0 9px 9px;pointer-events:none}.horas-ia-linha button{pointer-events:auto;font-size:13px;padding:6px 11px}
-    .horas-editor{padding-bottom:34px}.horas-nota-ia{font-size:12px;margin:12px 0 0}
+    .horas-editor{padding-bottom:34px}
     details{margin-top:18px}summary{cursor:pointer;font-weight:500;padding:4px 0}
     .ia-menu{position:relative}.ia-opcoes{position:absolute;right:0;top:calc(100% + 4px);z-index:5;min-width:250px;display:grid;padding:5px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 24px rgba(16,33,60,.14)}.ia-opcoes[hidden]{display:none}.ia-opcoes button{display:grid;gap:1px;text-align:left;border:0;border-radius:6px;padding:8px 10px;font-size:14px;font-weight:600;background:transparent;color:var(--ink)}.ia-opcoes button small{font-size:12px;font-weight:400;color:var(--mute)}.ia-opcoes button:hover:not(:disabled),.ia-opcoes button:focus-visible{background:var(--brand-soft)}.ia-opcoes button:disabled{opacity:.45}
     .ia-opcoes{max-height:min(70vh,440px);overflow-y:auto;overscroll-behavior:contain}.ia-opcoes [role=group]{display:grid}.ia-grupo{display:block;padding:9px 10px 3px;font-size:12px;font-weight:600;color:var(--mute)}.ia-opcoes [data-ia-tom]{font-weight:500}.ia-sep{border:0;border-top:1px solid var(--line);margin:5px 4px;width:auto}
-    .ia-status{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:6px 0 0}.ia-status #hIAMensagem{margin:0;font-size:13px}#hDesfazerIA{padding:5px 11px;font-size:13px;font-weight:600;color:var(--brand)}
+    .ia-erro{margin:6px 0 0;font-size:13px}
     #hSalvar{min-width:190px}#hCancelar{border-color:transparent;color:var(--mute)}
     .horas-registros{margin-top:20px}.horas-lista-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .horas-filtros{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0 16px}
@@ -54,14 +54,14 @@
     #horasForm label{font-weight:600;color:var(--ink);margin:14px 0 6px}#horasForm input{height:44px}#horasForm .row{gap:24px}#horasForm textarea{min-height:112px}
     .horas-total{min-height:42px;padding:10px 15px;margin:16px 0 16px;font-weight:500;color:var(--brand);background:var(--brand-soft)}.horas-total strong{font-weight:700}
     .editor-relato{border:1px solid #cbd5e3;border-radius:7px}.editor-barra{border-radius:7px 7px 0 0;min-height:42px;background:#f7f9fc;border-bottom:1px solid #dce3ec;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px}.editor-ferramentas{display:flex;align-items:center;gap:2px}.editor-ferramentas button{border:0;background:transparent;padding:4px 8px;min-width:30px;font-size:16px;line-height:1.1;color:var(--ink)}.editor-ferramentas button:hover{background:var(--brand-soft)}.editor-ferramentas .separador{height:19px;width:1px;background:#d8dfe8;margin:0 3px}#hMelhorarIA{padding:5px 11px;font-size:13px;color:var(--brand);font-weight:600;white-space:nowrap}.editor-relato textarea{border:0;border-radius:0 0 7px 7px;resize:vertical;display:block;width:100%;min-height:104px;padding:13px 15px}.editor-relato:focus-within{outline:2px solid var(--brand);outline-offset:2px}.editor-relato textarea:focus-visible{outline:none}
-    .horas-nota-ia{margin:8px 0 0;font-size:11px}#hSalvar{width:100%;min-height:46px;font-size:15px}#horasForm>.horas-actions{display:grid;grid-template-columns:1fr;gap:0;margin-top:8px}#hCancelar{justify-self:end;padding:5px 0;font-size:12px}
+    #hSalvar{width:100%;min-height:46px;font-size:15px}#horasForm>.horas-actions{display:grid;grid-template-columns:1fr;gap:0;margin-top:8px}#hCancelar{justify-self:end;padding:5px 0;font-size:12px}
     .horas-ajuda{padding:20px;border-radius:7px}.resumo-cabecalho{display:flex;gap:15px;align-items:start;padding-bottom:17px;border-bottom:1px solid var(--line)}.resumo-cabecalho svg{width:30px;height:30px;flex:none}.horas-ajuda svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.horas-ajuda h3{margin:0!important;font-size:18px!important}.resumo-data{font-size:14px;margin-top:2px}.resumo-metricas{margin:18px 0;gap:14px}.resumo-metrica{min-height:137px;text-align:center;border-radius:6px;padding:14px 7px}.resumo-metrica svg{display:block;width:28px;height:28px;margin:0 auto 10px;color:var(--brand)}.resumo-metrica strong{font-size:22px;white-space:normal}.resumo-metrica span{font-size:13px;margin-top:2px}.resumo-ultimo{display:flex;gap:12px;padding-top:18px}.resumo-ultimo svg{width:25px;height:25px;flex:none;color:var(--mute)}.resumo-ultimo p{font-size:13px;margin:6px 0 0;color:var(--ink)}
     .horas-registros{border-radius:7px;padding:18px 20px 24px}.horas-lista-top{margin:0 0 15px}.horas-lista-top h3{font-size:18px!important;margin:0!important}.horas-lista-top #hVerTodos{border:0;color:#0879bc;padding:2px 0;font-size:13px;background:transparent}.horas-resumo{font-size:12px;color:var(--mute);margin:4px 0 13px}#hFiltros{margin:0 0 10px}#hFiltros summary{font-size:12px;color:var(--mute)}#hExportacao,#hEnvios{font-size:12px;margin-top:15px}#hLista{overflow-x:auto}#hLista table{width:100%;font-size:12px}#hLista th{background:#f2f5f8;color:var(--mute);font-weight:500}#hLista th,#hLista td{padding:7px 12px;min-width:0}#hLista th:first-child{border-radius:5px 0 0 5px}#hLista th:last-child{border-radius:0 5px 5px 0}#hLista td:nth-child(2){min-width:190px}#hLista td button{padding:3px 8px;font-size:12px}.registro-detalhe td{background:#f8fafb}.registro-detalhe p{margin:4px 0}.registro-acao{white-space:nowrap}
     @media(max-width:1150px){.horas-shell{grid-template-columns:190px minmax(0,1fr);gap:14px}.horas-layout{grid-template-columns:minmax(0,1fr) 270px}.horas-nav a,.horas-nav #btnSair{padding:10px 12px;gap:10px}}
     @media(max-width:900px){.horas-shell{grid-template-columns:1fr}.horas-nav{position:static;display:flex;gap:6px}.horas-nav a,.horas-nav #btnSair{width:auto}.horas-layout{grid-template-columns:minmax(0,1fr) 260px}}
     @media(max-width:750px){.horas-layout{grid-template-columns:1fr}.horas-ajuda{order:2}.resumo-metricas{max-width:none}.horas-nav svg{display:none}}
     #hLista .registro-expandir{margin:0}#hLista .registro-expandir summary{padding:0;color:var(--ink);font-weight:500;white-space:nowrap}#hLista .registro-conteudo{width:min(330px,70vw);padding:12px 0;white-space:normal}#hLista .registro-conteudo .desc{white-space:pre-wrap}#hLista .registro-conteudo p{margin:5px 0}#hLista td{white-space:nowrap}
-    .horas-nota-ia{margin:6px 0 0;font-size:12px}.horas-ajuda #hCancelar{margin-top:10px;font-size:12px;padding:4px 0}
+    .horas-ajuda #hCancelar{margin-top:10px;font-size:12px;padding:4px 0}
     .resumo-ultimo{position:relative}.resumo-ultimo>div{min-width:0;width:100%}.resumo-ultimo p{line-height:1.45}.resumo-ultimo p small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--mute);margin-top:4px;font-size:12px}.ultimo-hora{float:right;color:var(--mute);font-size:12px;margin-left:8px}
     .icone-relogio{display:inline-block;width:19px;height:19px;border:2px solid currentColor;border-radius:50%;vertical-align:-4px;margin-right:7px;position:relative}.icone-relogio:after{content:"";position:absolute;left:7px;top:3px;width:5px;height:7px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-10deg)}
     #hLista .registro-acao{display:flex;align-items:center;gap:6px}#hLista .registro-acao button[data-h-excluir]{color:#a62822;border-color:#e4b5b1}#hLista .registro-acao button[data-h-excluir]:hover{border-color:#a62822;background:#fff7f6}
@@ -143,8 +143,7 @@
           <div id="hPrevia" class="horas-total" aria-live="polite">Informe o início e o término para calcular o tempo atendido.</div>
           <label for="hSolucao">Relato do serviço realizado *</label>
           <div class="editor-relato"><div class="editor-barra"><div class="editor-ferramentas"><button type="button" data-format="bold" title="Negrito" aria-label="Negrito"><b>B</b></button><button type="button" data-format="italic" title="Itálico" aria-label="Itálico"><em>I</em></button><button type="button" data-format="underline" title="Sublinhado" aria-label="Sublinhado"><u>U</u></button><span class="separador"></span><button type="button" data-format="bullet" title="Lista" aria-label="Lista">≡</button><button type="button" data-format="number" title="Lista numerada" aria-label="Lista numerada">☷</button><span class="separador"></span><button type="button" data-format="link" title="Inserir link" aria-label="Inserir link">↗</button></div><div class="ia-menu"><button id="hMelhorarIA" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="hIAMenu">✧ Melhorar texto <span aria-hidden="true">▾</span></button><div id="hIAMenu" class="ia-opcoes" role="menu" aria-label="Revisão com IA" hidden><button type="button" role="menuitem" data-ia-modo="melhorar">Melhorar texto</button><button type="button" role="menuitem" data-ia-modo="ortografia">Só corrigir ortografia</button><div role="group" aria-labelledby="hIATons"><span id="hIATons" class="ia-grupo">Tons de escrita</span><button type="button" role="menuitem" data-ia-modo="tom" data-ia-tom="profissional">Profissional</button><button type="button" role="menuitem" data-ia-modo="tom" data-ia-tom="casual">Casual</button></div><hr class="ia-sep" role="separator"><button type="button" role="menuitem" id="hIAOriginal" disabled>Texto original<small>Volta ao texto de antes da revisão</small></button></div></div></div><textarea id="hSolucao" maxlength="5000" required></textarea></div>
-          <p class="meta horas-nota-ia">O texto é enviado ao Google (Gemini) para revisão. Não escreva nome de paciente nem dados sensíveis. Confira o resultado antes de salvar.</p>
-          <div class="ia-status"><p id="hIAMensagem" role="status" aria-live="polite"></p><button id="hDesfazerIA" type="button" class="hide">Desfazer (voltar ao meu texto)</button></div>
+          <p id="hIAMensagem" class="ia-erro" role="status" aria-live="polite"></p><span id="hIAAnuncio" class="sr-only" role="status" aria-live="polite"></span>
           <p class="err" id="hErro" role="alert"></p>
           <div class="horas-actions"><button type="submit" class="primary" id="hSalvar">Salvar relatório</button><button type="button" id="hCancelar">Limpar formulário</button></div>
         </form>
@@ -355,12 +354,14 @@
   }
   // Sem pausas: o atendimento conta do contato até a solução.
   function previa(){const inicio=new Date($('hInicio').value),fim=new Date($('hFim').value);$('hPrevia').innerHTML=!$('hInicio').value||!$('hFim').value?'Informe o início e o término para calcular o tempo atendido.':fim>inicio?`<span class="icone-relogio" aria-hidden="true"></span>Duração do atendimento: &nbsp; <strong>${duracao((fim-inicio)/60000)}</strong>`:'Confira os horários: o término deve ser depois do início.';atualizarEtapas();}
-  // IA: a revisão troca o relato direto no campo e guarda o texto anterior para
-  // "Desfazer", que some quando a pessoa edita de novo ou salva.
+  // IA: a revisão troca o relato direto no campo e guarda o texto anterior para o
+  // "Texto original" do menu, que desabilita quando a pessoa edita à mão ou salva.
   const rotuloIA='✧ Melhorar texto <span aria-hidden="true">▾</span>';let aiAplicado='';
   function fecharMenuIA(){$('hIAMenu').hidden=true;$('hMelhorarIA').setAttribute('aria-expanded','false');}
-  function esquecerDesfazer(){aiOriginal='';aiAplicado='';$('hDesfazerIA').classList.add('hide');$('hIAOriginal').disabled=true;}
-  function limparIA(){aiGeracao++;aiBusy=false;esquecerDesfazer();fecharMenuIA();$('hMelhorarIA').disabled=false;$('hMelhorarIA').innerHTML=rotuloIA;aiMsg('');}
+  function esquecerOriginal(){aiOriginal='';aiAplicado='';$('hIAOriginal').disabled=true;}
+  // Sucesso não mostra mensagem na tela; só um aviso para leitor de tela.
+  const anunciarIA=s=>{$('hIAAnuncio').textContent='';setTimeout(()=>{$('hIAAnuncio').textContent=s;},50);};
+  function limparIA(){aiGeracao++;aiBusy=false;esquecerOriginal();fecharMenuIA();$('hMelhorarIA').disabled=false;$('hMelhorarIA').innerHTML=rotuloIA;aiMsg('');}
   function limpar(){editing=null;editandoOutro=null;$('horasForm').reset();$('hSolicitante').value='';$('hSetor').value='';$('horasFormTitulo').textContent='Registrar relatório';$('horasTitulo').textContent='Novo relatório de atendimento';$('hSalvar').textContent='Salvar relatório';$('hCancelar').textContent='Limpar formulário';$('hErro').textContent='';limparIA();previa();}
   const focarTitulo=()=>{if(matchMedia('(pointer:coarse)').matches)scrollTo({top:0,behavior:'smooth'});else $('hTitulo').focus();};
   function editar(a){const outro=a.usuario_id!==usuarioAtual?a:null;limpar();editing=a.id;editandoOutro=outro;$('horasFormTitulo').textContent='Editar relatório';$('horasTitulo').textContent=outro?`Editar relatório de ${nomeDe(a.usuario_id)}`:'Editar relatório de atendimento';$('hSalvar').textContent='Salvar alterações';$('hCancelar').textContent='Cancelar edição';for(const [id,key]of[['hTitulo','titulo'],['hSolicitante','solicitante'],['hSetor','setor'],['hSolucao','solucao']])$(id).value=a[key]||'';$('hInicio').value=local(a.inicio);$('hFim').value=a.fim?local(a.fim):'';previa();focarTitulo();}
@@ -420,21 +421,20 @@
   async function revisarIA(modo,tom){
     if(aiBusy||busy)return;const campo=$('hSolucao'),antes=campo.value,texto=antes.trim();
     if(texto.length<20)return aiMsg('Escreva pelo menos 20 caracteres sobre o serviço antes de pedir a revisão.',true);
-    const rodada=++aiGeracao;aiBusy=true;$('hMelhorarIA').disabled=true;$('hMelhorarIA').textContent=modo==='ortografia'?'Corrigindo…':modo==='tom'?'Aplicando tom…':'Revisando texto…';aiMsg('Enviando ao Gemini. Seu texto fica no campo até a resposta chegar.');
+    const rodada=++aiGeracao;aiBusy=true;$('hMelhorarIA').disabled=true;$('hMelhorarIA').textContent=modo==='ortografia'?'Corrigindo…':modo==='tom'?'Aplicando tom…':'Revisando texto…';aiMsg('');
     try{const data=await invoke('revisar-relatorio',modo==='tom'?{texto,modo,tom}:{texto,modo});if(rodada!==aiGeracao)return;
       if(typeof data.texto!=='string'||!data.texto.trim()||data.texto.length>5000)throw new Error('A revisão não veio em um formato válido. Seu texto foi mantido.');
       if(campo.value!==antes)return aiMsg('Você editou o relato durante a revisão, então nada foi trocado. Peça a revisão de novo se quiser.',true);
-      if(data.texto===texto)return aiMsg(modo==='ortografia'?'Nenhuma correção necessária.':'A revisão não sugeriu mudanças.');
+      if(data.texto===texto)return anunciarIA('A revisão não mudou o relato.');
       const emSequencia=!!aiAplicado&&antes===aiAplicado;if(!emSequencia)aiOriginal=antes;
-      campo.value=data.texto;aiAplicado=campo.value;atualizarEtapas();$('hDesfazerIA').classList.remove('hide');$('hIAOriginal').disabled=false;
-      aiMsg(modo==='ortografia'?'Ortografia corrigida no relato. Confira antes de salvar.':modo==='tom'?`Relato reescrito no tom ${NOMES_TOM[tom]}. Confira os fatos antes de salvar.`:'Texto revisado no relato. Confira os fatos antes de salvar.');campo.focus();}
+      campo.value=data.texto;aiAplicado=campo.value;atualizarEtapas();$('hIAOriginal').disabled=false;
+      anunciarIA(modo==='ortografia'?'Ortografia corrigida no relato.':modo==='tom'?`Relato reescrito no tom ${NOMES_TOM[tom]}.`:'Relato revisado.');campo.focus();}
     catch(e){if(rodada===aiGeracao)aiMsg(e.message,true);}
     finally{if(rodada===aiGeracao){aiBusy=false;$('hMelhorarIA').disabled=false;$('hMelhorarIA').innerHTML=rotuloIA;}}
   }
-  function voltarOriginal(){if(!aiAplicado)return;$('hSolucao').value=aiOriginal;esquecerDesfazer();atualizarEtapas();aiMsg('Seu texto original voltou.');$('hSolucao').focus();}
-  $('hDesfazerIA').onclick=voltarOriginal;
-  // Editou depois da revisão: o "Desfazer" some (não apaga o que a pessoa escreveu).
-  $('hSolucao').addEventListener('input',()=>{if(aiAplicado&&$('hSolucao').value!==aiAplicado){esquecerDesfazer();aiMsg('');}});
+  function voltarOriginal(){if(!aiAplicado)return;$('hSolucao').value=aiOriginal;esquecerOriginal();atualizarEtapas();aiMsg('');anunciarIA('Texto original de volta no relato.');$('hSolucao').focus();}
+  // Editou à mão depois da revisão: o "Texto original" desabilita (não apaga o que a pessoa escreveu).
+  $('hSolucao').addEventListener('input',()=>{if(aiAplicado&&$('hSolucao').value!==aiAplicado){esquecerOriginal();aiMsg('');}});
   function tabela(itens){return `<table><thead><tr><th>Início (Brasília)</th><th>Término (Brasília)</th><th>Tempo atendido</th><th>Solicitante / setor</th><th>Relato</th></tr></thead><tbody>${itens.map(a=>`<tr><td>${brasil(a.inicio)}</td><td>${brasil(a.fim)}</td><td>${duracao(a.minutos)}</td><td>${esc([a.solicitante,a.setor].filter(Boolean).join(' / ')||'—')}</td><td>${esc(a.titulo)}\n${esc(a.descricao)}${a.descricao?'\n':''}${esc(a.solucao)}</td></tr>`).join('')}</tbody></table>`;}
   // O envio junta tudo que ainda não foi enviado no período e colaborador do filtro.
   $('hPreparar').onclick=async()=>{prontos=filtrados(false).filter(a=>a.fim&&!a.relatorio_id);if(!prontos.length)return msg('Nada a enviar neste período: todos os atendimentos já foram enviados.',true);if(prontos.length>200)return msg('Selecione um período menor: cada resumo aceita até 200 registros.',true);

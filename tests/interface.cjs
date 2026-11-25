@@ -101,13 +101,17 @@ async function main() {
     assert.doesNotMatch(await page.locator('#hPrevia').innerText(),/pausa/i);
     assert.match(await page.locator('#hPrevia').innerText(),/0h 30min/);
 
-    // IA: menu "Melhorar texto ▾" com dois modos; troca direto no relato, com "Desfazer".
+    // IA: menu "Melhorar texto ▾"; troca direto no relato. Sem aviso fixo, sem mensagem de
+    // sucesso e sem "Desfazer": voltar ao texto anterior é pelo "Texto original" do menu.
     const menuIA=async modo=>{await page.locator('#hMelhorarIA').click();await page.locator(`[data-ia-modo="${modo}"]`).click();};
-    assert.match(await page.locator('.horas-nota-ia').innerText(),/enviado ao Google \(Gemini\).*Não escreva nome de paciente/);
-    assert.equal(await page.locator('.horas-nota-ia').isVisible(),true,'aviso de privacidade visível');
+    const relatoVira=async re=>page.waitForFunction(s=>new RegExp(s).test(document.getElementById('hSolucao').value),re.source);
+    const semMensagem=async()=>assert.equal(await page.locator('#hIAMensagem').isVisible(),false,'sem mensagem de sucesso na tela');
+    assert.equal(await page.locator('.horas-nota-ia').count(),0,'sem o aviso fixo de privacidade');
+    assert.equal(await page.getByText(/enviado ao Google \(Gemini\)/).count(),0);
+    assert.equal(await page.locator('#hDesfazerIA').count(),0,'sem o botão Desfazer');
     assert.equal(await page.locator('#hIASugestao').count(),0,'sem a caixa separada de sugestão');
     await page.locator('#hSolucao').fill('rede');await menuIA('melhorar');
-    assert.match(await page.locator('#hIAMensagem').innerText(),/pelo menos 20 caracteres/);
+    assert.match(await page.locator('#hIAMensagem').innerText(),/pelo menos 20 caracteres/,'erro continua aparecendo');
     assert.equal(await page.locator('#hIAMenu').isHidden(),true,'menu fecha depois de escolher');
     const original='fiz ajuste na rede e voltou a funcionar';
     await page.locator('#hSolucao').fill(original);
@@ -120,57 +124,57 @@ async function main() {
     assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'"Texto original" desabilitado sem revisão aplicada');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#hIAMenu').isHidden(),true,'Esc fecha o menu');
-    // Celular baixo (iPhone SE): o menu maior cabe na largura e rola na altura.
+    // Celular baixo (iPhone SE): o menu cabe na largura e rola na altura se precisar.
     await page.setViewportSize({width:375,height:667});await page.locator('#hSolucao').scrollIntoViewIfNeeded();await page.locator('#hMelhorarIA').click();
     assert.equal(await page.evaluate(()=>{const m=document.getElementById('hIAMenu'),r=m.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&document.documentElement.scrollWidth<=innerWidth&&m.clientHeight<=Math.min(innerHeight*.7,440)+1&&getComputedStyle(m).overflowY==='auto';}),true,'menu cabe no celular, com rolagem');
     await page.locator('#hIAOriginal').scrollIntoViewIfNeeded();assert.equal(await page.locator('#hIAOriginal').isVisible(),true,'"Texto original" alcançável rolando o menu');
     await page.locator('#hIAMenu').screenshot({path:path.join(review,'ia-menu-celular.png')});
     await page.keyboard.press('Escape');await page.setViewportSize({width:1440,height:1000});
+    // Erro: a mensagem continua aparecendo e o texto fica.
     await page.evaluate(()=>window.failAI=true);await menuIA('melhorar');
     await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('ainda não está disponível'));
+    assert.equal(await page.locator('#hIAMensagem').isVisible(),true,'erro da IA aparece');
     assert.equal(await page.locator('#hSolucao').inputValue(),original,'erro da IA mantém o texto');
-    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
-    await page.evaluate(()=>window.failAI=false);await menuIA('melhorar');
-    await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Texto revisado no relato'));
-    assert.match(await page.locator('#hSolucao').inputValue(),/Foi realizado o ajuste/,'troca direto no campo');
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'erro não habilita o "Texto original"');
+    // Carregando: o botão mostra o estado enquanto a revisão roda.
+    await page.evaluate(()=>{window.failAI=false;window.deferAI=true;});await menuIA('melhorar');
+    await page.waitForFunction(()=>window.finishAI);
+    assert.equal(await page.locator('#hMelhorarIA').innerText(),'Revisando texto…');assert.equal(await page.locator('#hMelhorarIA').isDisabled(),true);
+    await page.evaluate(()=>{window.deferAI=false;window.finishAI();window.finishAI=null;});
+    await relatoVira(/Foi realizado o ajuste/);await semMensagem();
+    assert.equal(await page.locator('#hMelhorarIA').isEnabled(),true);
+    await page.waitForFunction(()=>document.getElementById('hIAAnuncio').textContent==='Relato revisado.');// leitor de tela é avisado
+    assert.equal(await page.locator('#hIAAnuncio').getAttribute('class'),'sr-only','aviso só para leitor de tela');
     assert.equal(await page.evaluate(()=>testState.aiModos.at(-1)),'melhorar');
-    await page.locator('#hDesfazerIA').click();
-    assert.equal(await page.locator('#hSolucao').inputValue(),original,'Desfazer volta ao texto anterior');
-    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
-    await menuIA('ortografia');
-    await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Ortografia corrigida'));
+    await page.locator('#hMelhorarIA').click();await page.locator('#hIAOriginal').click();
+    assert.equal(await page.locator('#hSolucao').inputValue(),original,'"Texto original" volta ao texto anterior');
+    await menuIA('ortografia');await relatoVira(/^Fiz ajuste na rede e voltou a funcionar\.$/);await semMensagem();
     assert.equal(await page.evaluate(()=>testState.aiModos.at(-1)),'ortografia');
-    assert.equal(await page.locator('#hSolucao').inputValue(),'Fiz ajuste na rede e voltou a funcionar.');
     await page.locator('#hSolucao').press('End');await page.keyboard.type(' Testado.');
-    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false,'editar de novo tira o Desfazer');
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'editar à mão desabilita o "Texto original"');
     // Tons seguidos: "Texto original" volta ao que a pessoa escreveu ANTES da 1ª revisão da sequência.
     const meuTexto=await page.locator('#hSolucao').inputValue();
     const tomIA=async tom=>{await page.locator('#hMelhorarIA').click();await page.locator(`[data-ia-tom="${tom}"]`).click();
       await page.waitForFunction(t=>document.getElementById('hSolucao').value===`Relato reescrito no tom ${t}.`,tom);};
-    await tomIA('profissional');
+    await tomIA('profissional');await semMensagem();
     assert.deepEqual(await page.evaluate(()=>{const {modo,tom}=testState.aiPedidos.at(-1);return {modo,tom};}),{modo:'tom',tom:'profissional'},'tom vai para a função');
-    assert.match(await page.locator('#hIAMensagem').innerText(),/tom Profissional/);
-    await tomIA('casual');await tomIA('profissional');
-    assert.equal(await page.evaluate(()=>testState.aiPedidos.at(-1).texto),'Relato reescrito no tom casual.','o 2º tom parte do texto do 1º');
+    await tomIA('casual');
+    assert.equal(await page.evaluate(()=>testState.aiPedidos.at(-1).texto),'Relato reescrito no tom profissional.','o 2º tom parte do texto do 1º');
     await page.locator('#hMelhorarIA').click();
     assert.equal(await page.locator('#hIAOriginal').isEnabled(),true,'"Texto original" habilitado depois da revisão');
     await page.screenshot({path:path.join(review,'ia-menu-tons.png'),fullPage:false});
     await page.locator('#hIAOriginal').click();
-    assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'"Texto original" volta ao texto da pessoa, mesmo depois de 3 tons');
-    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);assert.equal(await page.locator('#hIAOriginal').isDisabled(),true);
-    // "Desfazer" ao lado da mensagem também volta ao original da sequência.
-    await tomIA('casual');await tomIA('profissional');await page.locator('#hDesfazerIA').click();
-    assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'Desfazer volta ao original, não só 1 passo');
-    // Editar à mão zera o "Texto original".
+    assert.equal(await page.locator('#hSolucao').inputValue(),meuTexto,'"Texto original" volta ao texto da pessoa depois de dois tons seguidos');
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true);await semMensagem();
+    // Editar à mão desabilita o "Texto original".
     await tomIA('casual');await page.locator('#hSolucao').press('End');await page.keyboard.type(' Ajuste manual.');
-    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'editar à mão zera o "Texto original"');
-    assert.equal(await page.locator('#hDesfazerIA').isVisible(),false);
+    assert.equal(await page.locator('#hIAOriginal').isDisabled(),true,'editar à mão desabilita o "Texto original"');
     // Depois de editar, a próxima revisão começa uma sequência nova a partir do texto editado.
     const editado=await page.locator('#hSolucao').inputValue();
     await tomIA('profissional');await page.locator('#hMelhorarIA').click();await page.locator('#hIAOriginal').click();
     assert.equal(await page.locator('#hSolucao').inputValue(),editado,'nova sequência guarda o texto editado');
-    await menuIA('melhorar');await page.waitForFunction(()=>document.getElementById('hIAMensagem').textContent.includes('Texto revisado no relato'));
-    await page.screenshot({path:path.join(review,'ia-desfazer.png'),fullPage:false});
+    await menuIA('melhorar');await relatoVira(/Foi realizado o ajuste/);await semMensagem();
+    await page.screenshot({path:path.join(review,'ia-sem-avisos.png'),fullPage:false});
     assert.equal(await page.evaluate(()=>testState.rows.length),2,'IA não salva atendimento');
 
     // Validações do envio do formulário.

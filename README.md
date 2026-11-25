@@ -60,7 +60,7 @@ O botão **Melhorar texto ▾** abre um menu no estilo do Infradesk:
 - **Tons de escrita:** Profissional e Casual. É uma lista fechada, e qualquer outro valor é recusado com 400, inclusive os antigos `empatico` e `amigavel`. Como o relato vai para o RH, o tom casual não usa gíria nem emoji.
 - **Texto original:** volta ao que a pessoa escreveu antes da 1ª revisão, mesmo depois de vários tons seguidos.
 
-A Edge Function `revisar-relatorio` envia **somente o texto do relato** ao Gemini (Google AI Studio, plano grátis). O resultado troca o relato direto no campo. O "Texto original" e o botão **Desfazer (voltar ao meu texto)** ficam disponíveis até a pessoa editar à mão ou salvar. Cada revisão, inclusive cada tom, conta 1 no limite por hora.
+A Edge Function `revisar-relatorio` envia **somente o texto do relato** ao Gemini (Google AI Studio, plano grátis). O resultado troca o relato direto no campo, sem mensagem de sucesso na tela; só o leitor de tela é avisado. Para voltar ao texto anterior, use o **Texto original** do menu, que fica disponível até a pessoa editar à mão ou salvar. Abaixo do campo aparecem apenas os erros: Google sobrecarregado, limite de 10 por hora, número alterado, tempo esgotado, cota e outros. Cada revisão, inclusive cada tom, conta 1 no limite por hora.
 
 Proteções da função:
 - Exige sessão válida (`auth.getUser`) e perfil.
